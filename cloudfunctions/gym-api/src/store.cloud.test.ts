@@ -90,7 +90,59 @@ class FakeDatabase implements CloudDatabase {
   }
 }
 
+class TransactionBusyDatabase implements CloudDatabase {
+  readonly collections = new Map<string, Map<string, Record<string, unknown>>>()
+
+  collection(name: string) {
+    let documents = this.collections.get(name)
+    if (!documents) {
+      documents = new Map()
+      this.collections.set(name, documents)
+    }
+    return new FakeCollection(documents)
+  }
+
+  async runTransaction<T>(work: (transaction: CloudDatabase) => Promise<T>): Promise<T> {
+    let readInProgress = false
+    const transaction = {
+      collection: (name: string) => {
+        const documents = this.collections.get(name) ?? new Map<string, Record<string, unknown>>()
+        this.collections.set(name, documents)
+        const collection = {
+          async get() {
+            if (readInProgress) {
+              throw new Error('[ResourceUnavailable.TransactionBusy] Transaction is busy.')
+            }
+            readInProgress = true
+            await Promise.resolve()
+            readInProgress = false
+            return { data: [] }
+          },
+          doc(id: string) {
+            return new FakeDocument(documents, id)
+          },
+          limit() {
+            return collection
+          },
+          skip() {
+            return collection
+          },
+        }
+        return collection
+      },
+      runTransaction: this.runTransaction.bind(this),
+    }
+    return work(transaction)
+  }
+}
+
 describe('CloudBaseStore', () => {
+  it('事务内依次读取集合，避免 CloudBase TransactionBusy', async () => {
+    const store = new CloudBaseStore(new TransactionBusyDatabase())
+
+    await expect(store.transaction(() => undefined)).resolves.toBeUndefined()
+  })
+
   it('从核心集合加载数据，并在数据库事务中持久化领域变更', async () => {
     const database = new FakeDatabase()
     await database.collection('memberships').doc('package-1').set({

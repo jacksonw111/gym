@@ -165,24 +165,22 @@ export class CloudBaseStore implements Store {
   }
 
   private async loadFrom(database: CloudDatabase): Promise<void> {
-    await Promise.all(
-      this.definitions().map(async (definition) => {
-        const records: Array<Record<string, unknown>> = []
-        let offset = 0
-        while (true) {
-          const result = await database
-            .collection(definition.name)
-            .limit(PAGE_SIZE)
-            .skip(offset)
-            .get()
-          const page = recordsFromResult(result.data)
-          records.push(...page)
-          if (page.length < PAGE_SIZE) break
-          offset += PAGE_SIZE
-        }
-        definition.write(records)
-      }),
-    )
+    for (const definition of this.definitions()) {
+      const records: Array<Record<string, unknown>> = []
+      let offset = 0
+      while (true) {
+        const result = await database
+          .collection(definition.name)
+          .limit(PAGE_SIZE)
+          .skip(offset)
+          .get()
+        const page = recordsFromResult(result.data)
+        records.push(...page)
+        if (page.length < PAGE_SIZE) break
+        offset += PAGE_SIZE
+      }
+      definition.write(records)
+    }
   }
 
   async load(): Promise<void> {
