@@ -71,25 +71,6 @@ const getCurrentUser = (store: Store, request: ApiRequest): User => {
   return user
 }
 
-const ensureCurrentUser = async (store: Store, request: ApiRequest): Promise<User> => {
-  const openId = request.identity?.openId
-  if (!openId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
-  const existing = store.users.find((item) => item.openId === openId)
-  if (existing) return existing
-  return store.transaction(() => {
-    const duplicate = store.users.find((item) => item.openId === openId)
-    if (duplicate) return duplicate
-    const user: User = {
-      id: store.nextId('user'),
-      openId,
-      name: '新会员',
-      roles: ['member'],
-    }
-    store.users.push(user)
-    return user
-  })
-}
-
 const defaultScheduleSlots = (store: Store, coachId: string, date: string): ScheduleSlot[] => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00+08:00`))) {
     throw new ApiError('INVALID_REQUEST', '日期格式不正确')
@@ -267,7 +248,28 @@ export const createRouter = (
       const now = nowProvider()
       switch (request.action) {
         case 'bootstrap': {
-          const currentUser = await ensureCurrentUser(store, request)
+          const currentUser = request.identity?.openId
+            ? store.users.find((item) => item.openId === request.identity?.openId)
+            : undefined
+          if (!currentUser) {
+            return {
+              ok: true,
+              data: {
+                authenticated: false,
+                actor: null,
+                profile: null,
+                roles: [],
+                activeRole: null,
+                packages: store.products.filter((item) => item.status === 'published'),
+                coaches: store.coaches.filter((item) => item.status === 'active'),
+                memberships: [],
+                lessons: [],
+                appeals: [],
+                orders: [],
+                coach: { schedule: [], lessons: [] },
+              },
+            }
+          }
           const requestedRole = payload.activeRole
           const activeRole =
             (requestedRole === 'member' || requestedRole === 'coach') &&
@@ -301,6 +303,7 @@ export const createRouter = (
           return {
             ok: true,
             data: {
+              authenticated: true,
               actor,
               profile: currentUser,
               roles: currentUser.roles,

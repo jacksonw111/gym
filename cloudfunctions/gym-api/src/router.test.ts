@@ -76,38 +76,37 @@ describe('CloudBase action router', () => {
     })
   })
 
-  it('bootstrap 为首次进入的真实微信用户创建会员记录并重复复用', async () => {
+  it('bootstrap 让首次进入的真实微信用户保持游客且不写入会员', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const router = createRouter(store, {
       developmentPaymentsEnabled: false,
       production: true,
     })
-    const request = {
+    const response = await router({
       action: 'bootstrap',
-      requestId: 'bootstrap-new-member',
+      requestId: 'bootstrap-guest',
       payload: {},
-      identity: { openId: 'real-wechat-openid' },
-    }
+      identity: { openId: 'guest-openid' },
+    })
 
-    const first = await router(request)
-    const second = await router({ ...request, requestId: 'bootstrap-new-member-again' })
-
-    expect(first).toMatchObject({
+    expect(response).toMatchObject({
       ok: true,
       data: {
-        profile: {
-          openId: 'real-wechat-openid',
-          name: '新会员',
-          roles: ['member'],
-        },
-        activeRole: 'member',
+        authenticated: false,
+        actor: null,
+        profile: null,
+        roles: [],
+        activeRole: null,
+        packages: [{ id: 'product-1' }],
+        coaches: [{ id: 'coach-1' }],
+        memberships: [],
+        lessons: [],
+        appeals: [],
+        orders: [],
+        coach: { schedule: [], lessons: [] },
       },
     })
-    expect(second).toMatchObject({
-      ok: true,
-      data: { profile: { openId: 'real-wechat-openid' } },
-    })
-    expect(store.users.filter((item) => item.openId === 'real-wechat-openid')).toHaveLength(1)
+    expect(store.users.some((item) => item.openId === 'guest-openid')).toBe(false)
   })
 
   it('getSchedule 为真实教练日期首次访问创建默认开放的十一个时段', async () => {
