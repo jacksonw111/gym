@@ -587,9 +587,9 @@ Create the warm-white, charcoal, strength-red, and signal-yellow style system. A
 
 - [ ] **Step 6: Run the test and production build**
 
-Run: `rtk npx vitest run admin/src/app.test.tsx && rtk npm run admin:build`
+Run: `rtk npx vitest run admin/src/app.test.tsx && rtk npm run admin:build && rtk npm run check`
 
-Expected: authentication test passes and Vite creates `admin/dist`.
+Expected: authentication test passes, Vite creates `admin/dist`, and the root checks include the admin type and lint scripts.
 
 - [ ] **Step 7: Commit**
 

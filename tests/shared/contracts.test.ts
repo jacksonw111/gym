@@ -104,39 +104,38 @@ describe('status-specific contracts', () => {
       status: 'coach_cancelled_released',
       consumedAt: '2026-08-01T09:30:00+08:00',
     }
-    const bookedWithFeedback: Lesson = {
-      ...lessonBase,
-      status: 'booked',
-      // @ts-expect-error booked lessons cannot contain feedback
-      feedback: {
-        submittedAt: '2026-08-01T09:30:00+08:00',
-      },
+    const feedback = {
+      submittedAt: '2026-08-01T09:30:00+08:00',
     }
-    const memberCancellationWithFeedback: Lesson = {
+    const bookedWithFeedbackSource = {
       ...lessonBase,
-      status: 'member_cancelled',
-      // @ts-expect-error member-cancelled lessons cannot contain feedback
-      feedback: {
-        submittedAt: '2026-08-01T09:30:00+08:00',
-      },
+      status: 'booked' as const,
+      feedback,
     }
-    const releasedCancellationWithFeedback: Lesson = {
+    const memberCancellationWithFeedbackSource = {
       ...lessonBase,
-      status: 'coach_cancelled_released',
-      // @ts-expect-error released coach cancellations cannot contain feedback
-      feedback: {
-        submittedAt: '2026-08-01T09:30:00+08:00',
-      },
+      status: 'member_cancelled' as const,
+      feedback,
     }
-    const consumedCancellationWithFeedback: Lesson = {
+    const releasedCancellationWithFeedbackSource = {
       ...lessonBase,
-      status: 'coach_cancelled_consumed',
+      status: 'coach_cancelled_released' as const,
+      feedback,
+    }
+    const consumedCancellationWithFeedbackSource = {
+      ...lessonBase,
+      status: 'coach_cancelled_consumed' as const,
       consumedAt: '2026-08-01T09:30:00+08:00',
-      // @ts-expect-error consumed coach cancellations cannot contain feedback
-      feedback: {
-        submittedAt: '2026-08-01T09:30:00+08:00',
-      },
+      feedback,
     }
+    // @ts-expect-error booked lessons cannot receive feedback through structural assignment
+    const bookedWithFeedback: Lesson = bookedWithFeedbackSource
+    // @ts-expect-error member-cancelled lessons cannot receive feedback through structural assignment
+    const memberCancellationWithFeedback: Lesson = memberCancellationWithFeedbackSource
+    // @ts-expect-error released cancellations cannot receive feedback through structural assignment
+    const releasedCancellationWithFeedback: Lesson = releasedCancellationWithFeedbackSource
+    // @ts-expect-error consumed cancellations cannot receive feedback through structural assignment
+    const consumedCancellationWithFeedback: Lesson = consumedCancellationWithFeedbackSource
 
     expect(completed.status).toBe('completed')
     expect(consumedCancellation.status).toBe('coach_cancelled_consumed')

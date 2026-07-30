@@ -78,24 +78,28 @@ interface BookedLesson extends LessonBase {
   status: 'booked'
   completionSource?: never
   consumedAt?: never
+  feedback?: never
 }
 
 interface MemberCancelledLesson extends LessonBase {
   status: 'member_cancelled'
   completionSource?: never
   consumedAt?: never
+  feedback?: never
 }
 
-interface ReleasedCoachCancellation extends LessonBase {
+interface CoachCancelledReleasedLesson extends LessonBase {
   status: 'coach_cancelled_released'
   completionSource?: never
   consumedAt?: never
+  feedback?: never
 }
 
-interface ConsumedCoachCancellation extends LessonBase {
+interface CoachCancelledConsumedLesson extends LessonBase {
   status: 'coach_cancelled_consumed'
   completionSource?: never
   consumedAt: string
+  feedback?: never
 }
 
 interface CompletedLesson extends LessonBase {
@@ -108,8 +112,8 @@ interface CompletedLesson extends LessonBase {
 export type Lesson =
   | BookedLesson
   | MemberCancelledLesson
-  | ReleasedCoachCancellation
-  | ConsumedCoachCancellation
+  | CoachCancelledReleasedLesson
+  | CoachCancelledConsumedLesson
   | CompletedLesson
 
 export type AppealStatus = 'pending' | 'approved' | 'rejected'
