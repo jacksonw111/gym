@@ -1,17 +1,6 @@
 import cloudbase from '@cloudbase/js-sdk'
-import type {
-  AdminApi,
-  Appeal,
-  Booking,
-  Coach,
-  CoachInput,
-  CoachStatus,
-  Member,
-  Product,
-  ProductInput,
-  ProductStatus,
-  Sale,
-} from './types'
+import { normalizeAdminData, toCloudProductInput } from './normalize'
+import type { AdminApi, CoachInput, CoachStatus, ProductInput, ProductStatus } from './types'
 
 interface CloudResponse<T> {
   ok: boolean
@@ -50,25 +39,15 @@ export const createProductionApi = (envId: string): AdminApi => {
       sessionStorage.removeItem(SESSION_KEY)
     },
     async loadData() {
-      const [dashboard, coaches, members, products, bookings, appeals] = await Promise.all([
-        call<{ sales: Sale[] }>('adminCrud', {
+      const [dashboard, bookings, appeals] = await Promise.all([
+        call<unknown>('adminCrud', {
           resource: 'dashboard',
           operation: 'list',
         }),
-        call<Coach[]>('adminCrud', { resource: 'coaches', operation: 'list' }),
-        call<Member[]>('adminCrud', { resource: 'members', operation: 'list' }),
-        call<Product[]>('adminCrud', { resource: 'packages', operation: 'list' }),
-        call<Booking[]>('listBookings'),
-        call<Appeal[]>('listAppeals'),
+        call<unknown>('listBookings'),
+        call<unknown>('listAppeals'),
       ])
-      return {
-        coaches,
-        members,
-        products,
-        bookings,
-        appeals,
-        sales: dashboard.sales,
-      }
+      return normalizeAdminData(dashboard, bookings, appeals)
     },
     saveCoach: (input: CoachInput) =>
       call('adminCrud', { resource: 'coaches', operation: 'save', data: input }),
@@ -80,7 +59,11 @@ export const createProductionApi = (envId: string): AdminApi => {
       }),
     adjustPackage: (packageId, delta, note) => call('adjustBalance', { packageId, delta, note }),
     saveProduct: (input: ProductInput) =>
-      call('adminCrud', { resource: 'packages', operation: 'save', data: input }),
+      call('adminCrud', {
+        resource: 'packages',
+        operation: 'save',
+        data: toCloudProductInput(input),
+      }),
     setProductStatus: (id: string, status: ProductStatus) =>
       call('adminCrud', {
         resource: 'packages',

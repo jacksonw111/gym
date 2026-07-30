@@ -10,11 +10,24 @@ export type LessonStatus =
 
 export interface Coach {
   id: string
+  userId: string
   name: string
   phone: string
   specialty: string
   status: CoachStatus
   schedule: Array<{ date: string; time: string; member: string; course: string }>
+  history: Array<{ date: string; member: string; status: string }>
+}
+
+export interface BalanceChange {
+  id: string
+  operation: 'purchase' | 'lock' | 'release' | 'consume' | 'appeal_refund' | 'manual_adjust'
+  availableDelta: number
+  lockedDelta: number
+  usedDelta: number
+  totalDelta: number
+  createdAt: string
+  note?: string
 }
 
 export interface MembershipPackage {
@@ -27,6 +40,7 @@ export interface MembershipPackage {
   used: number
   total: number
   purchasedAt: string
+  changes: BalanceChange[]
 }
 
 export interface Member {
@@ -62,7 +76,8 @@ export interface Booking {
   packageName: string
   source: string
   timeline: Array<{ at: string; label: string; source: string }>
-  ledger: Array<{ at: string; operation: string; delta: number }>
+  ledger: Array<{ id: string; at: string; operation: string; delta: number; description: string }>
+  feedback?: { rating?: number; comment?: string; submittedAt: string }
 }
 
 export interface Appeal {
@@ -77,6 +92,8 @@ export interface Appeal {
   note: string
   status: AppealStatus
   createdAt: string
+  source: string
+  balanceChanges: Booking['ledger']
   decisionNote?: string
   handledAt?: string
 }

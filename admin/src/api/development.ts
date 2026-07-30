@@ -15,6 +15,7 @@ const seedData = (): AdminData => ({
   coaches: [
     {
       id: 'coach-linxiao',
+      userId: 'coach-user-linxiao',
       name: '林骁',
       phone: '138 0013 8001',
       specialty: '力量训练 · 运动表现',
@@ -23,22 +24,30 @@ const seedData = (): AdminData => ({
         { date: '2026-07-30', time: '10:00–11:00', member: '陈澄', course: '私教进阶课' },
         { date: '2026-07-30', time: '16:00–17:00', member: '沈舟', course: '基础力量课' },
       ],
+      history: [
+        { date: '2026-07-30', member: '陈澄', status: '已完成' },
+        { date: '2026-07-26', member: '陈澄', status: '教练取消（已扣课）' },
+      ],
     },
     {
       id: 'coach-zhoulan',
+      userId: 'coach-user-zhoulan',
       name: '周岚',
       phone: '138 0013 8002',
       specialty: '体态改善 · 康复训练',
       status: 'active',
       schedule: [{ date: '2026-07-31', time: '09:00–10:00', member: '许妍', course: '体态评估课' }],
+      history: [{ date: '2026-07-19', member: '许妍', status: '已完成' }],
     },
     {
       id: 'coach-jiangyu',
+      userId: 'coach-user-jiangyu',
       name: '江屿',
       phone: '138 0013 8003',
       specialty: '减脂塑形 · 拳击',
       status: 'inactive',
       schedule: [],
+      history: [],
     },
   ],
   members: [
@@ -58,6 +67,7 @@ const seedData = (): AdminData => ({
           used: 5,
           total: 12,
           purchasedAt: '2026-06-18',
+          changes: [],
         },
       ],
       courseHistory: [
@@ -91,6 +101,7 @@ const seedData = (): AdminData => ({
           used: 2,
           total: 8,
           purchasedAt: '2026-05-08',
+          changes: [],
         },
       ],
       courseHistory: [
@@ -123,6 +134,7 @@ const seedData = (): AdminData => ({
           used: 1,
           total: 6,
           purchasedAt: '2026-07-03',
+          changes: [],
         },
       ],
       courseHistory: [
@@ -183,9 +195,26 @@ const seedData = (): AdminData => ({
         { at: '07-30 11:05', label: '课程完成', source: '会员确认' },
       ],
       ledger: [
-        { at: '07-28 11:20', operation: '锁定课时', delta: -1 },
-        { at: '07-30 11:05', operation: '核销课时', delta: 0 },
+        {
+          id: 'change-completed-lock',
+          at: '07-28 11:20',
+          operation: '锁定课时',
+          delta: -1,
+          description: '可用 -1 / 锁定 +1',
+        },
+        {
+          id: 'change-completed-consume',
+          at: '07-30 11:05',
+          operation: '核销课时',
+          delta: 0,
+          description: '锁定 -1 / 已用 +1',
+        },
       ],
+      feedback: {
+        rating: 5,
+        comment: '动作纠正很细致。',
+        submittedAt: '2026-07-30 11:12',
+      },
     },
     {
       id: 'lesson-0730-booked',
@@ -199,7 +228,15 @@ const seedData = (): AdminData => ({
       packageName: '8 节私教基础包',
       source: '会员预约',
       timeline: [{ at: '07-29 09:40', label: '预约成功', source: '会员端' }],
-      ledger: [{ at: '07-29 09:40', operation: '锁定课时', delta: -1 }],
+      ledger: [
+        {
+          id: 'change-booked-lock',
+          at: '07-29 09:40',
+          operation: '锁定课时',
+          delta: -1,
+          description: '可用 -1 / 锁定 +1',
+        },
+      ],
     },
     {
       id: 'lesson-0731-booked',
@@ -213,7 +250,15 @@ const seedData = (): AdminData => ({
       packageName: '6 节体态改善包',
       source: '会员预约',
       timeline: [{ at: '07-29 14:10', label: '预约成功', source: '会员端' }],
-      ledger: [{ at: '07-29 14:10', operation: '锁定课时', delta: -1 }],
+      ledger: [
+        {
+          id: 'change-posture-lock',
+          at: '07-29 14:10',
+          operation: '锁定课时',
+          delta: -1,
+          description: '可用 -1 / 锁定 +1',
+        },
+      ],
     },
     {
       id: 'lesson-appealed',
@@ -231,8 +276,20 @@ const seedData = (): AdminData => ({
         { at: '07-26 13:12', label: '教练取消并扣课', source: '教练端' },
       ],
       ledger: [
-        { at: '07-24 18:20', operation: '锁定课时', delta: -1 },
-        { at: '07-26 13:12', operation: '核销课时', delta: 0 },
+        {
+          id: 'change-appealed-lock',
+          at: '07-24 18:20',
+          operation: '锁定课时',
+          delta: -1,
+          description: '可用 -1 / 锁定 +1',
+        },
+        {
+          id: 'change-appealed-consume',
+          at: '07-26 13:12',
+          operation: '核销课时',
+          delta: 0,
+          description: '锁定 -1 / 已用 +1',
+        },
       ],
     },
   ],
@@ -249,6 +306,23 @@ const seedData = (): AdminData => ({
       note: '当天 13:12 收到取消消息，没有实际到馆上课。',
       status: 'pending',
       createdAt: '2026-07-30 09:18',
+      source: '教练取消 · 已扣课',
+      balanceChanges: [
+        {
+          id: 'change-appealed-lock',
+          at: '07-24 18:20',
+          operation: '锁定课时',
+          delta: -1,
+          description: '可用 -1 / 锁定 +1',
+        },
+        {
+          id: 'change-appealed-consume',
+          at: '07-26 13:12',
+          operation: '核销课时',
+          delta: 0,
+          description: '锁定 -1 / 已用 +1',
+        },
+      ],
     },
     {
       id: 'appeal-240722',
@@ -262,6 +336,8 @@ const seedData = (): AdminData => ({
       note: '已与教练确认。',
       status: 'rejected',
       createdAt: '2026-07-22 11:04',
+      source: '会员确认完成',
+      balanceChanges: [],
       decisionNote: '核对签到与双方记录，课程已正常完成。',
       handledAt: '2026-07-22 14:30',
     },
@@ -288,7 +364,13 @@ const clone = <T>(value: T): T => structuredClone(value)
 
 const readData = (): AdminData => {
   const stored = localStorage.getItem(DATA_KEY)
-  if (stored) return JSON.parse(stored) as AdminData
+  if (stored) {
+    const data = JSON.parse(stored) as AdminData
+    for (const member of data.members) {
+      for (const membership of member.packages) membership.changes ??= []
+    }
+    return data
+  }
   const data = seedData()
   localStorage.setItem(DATA_KEY, JSON.stringify(data))
   return data
@@ -338,11 +420,13 @@ export const developmentApi: AdminApi = {
     } else {
       data.coaches.push({
         id: `coach-${Date.now()}`,
+        userId: `coach-user-${Date.now()}`,
         name: input.name,
         phone: input.phone,
         specialty: input.specialty,
         status: 'active',
         schedule: [],
+        history: [],
       })
     }
     writeData(data)
@@ -354,12 +438,22 @@ export const developmentApi: AdminApi = {
     coach.status = status
     writeData(data)
   },
-  async adjustPackage(packageId, delta, _note) {
+  async adjustPackage(packageId, delta, note) {
     const data = readData()
     const membership = findPackage(data, packageId)
     if (membership.available + delta < 0) throw new Error('可用课时不足')
     membership.available += delta
     membership.total += delta
+    membership.changes.push({
+      id: `change-${membership.id}-${membership.changes.length + 1}`,
+      operation: 'manual_adjust',
+      availableDelta: delta,
+      lockedDelta: 0,
+      usedDelta: 0,
+      totalDelta: delta,
+      createdAt: '2026-07-30 14:30',
+      note,
+    })
     writeData(data)
   },
   async saveProduct(input: ProductInput) {
@@ -394,8 +488,27 @@ export const developmentApi: AdminApi = {
     updateAppeal(appeal, decision, decisionNote)
     if (decision === 'approve') {
       const membership = findPackage(data, appeal.packageId)
+      if (membership.used < 1) throw new Error('没有可退回的已用课时')
       membership.available += 1
-      membership.total += 1
+      membership.used -= 1
+      const refund = {
+        id: `change-${membership.id}-${membership.changes.length + 1}`,
+        operation: 'appeal_refund' as const,
+        availableDelta: 1,
+        lockedDelta: 0,
+        usedDelta: -1,
+        totalDelta: 0,
+        createdAt: '2026-07-30 14:30',
+        note: decisionNote,
+      }
+      membership.changes.push(refund)
+      appeal.balanceChanges.push({
+        id: refund.id,
+        at: refund.createdAt,
+        operation: '申诉退款',
+        delta: 1,
+        description: '可用 +1 / 已用 -1',
+      })
     }
     writeData(data)
   },
