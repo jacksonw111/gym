@@ -2,6 +2,7 @@
   "description": "项目配置文件",
   "miniprogramRoot": "miniprogram/",
   "compileType": "miniprogram",
+  "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
     "useCompilerPlugins": ["typescript", "less"],
     "babelSetting": {
