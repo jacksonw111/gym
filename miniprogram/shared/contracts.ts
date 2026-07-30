@@ -65,34 +65,92 @@ export interface LessonFeedback {
   submittedAt: string
 }
 
-export interface Lesson {
+interface LessonBase {
   id: string
   memberId: string
   coachId: string
   membershipPackageId: string
   startsAt: string
   endsAt: string
-  status: LessonStatus
-  completionSource?: LessonCompletionSource
-  consumedAt?: string
   feedback?: LessonFeedback
 }
 
+interface BookedLesson extends LessonBase {
+  status: 'booked'
+  completionSource?: never
+  consumedAt?: never
+}
+
+interface MemberCancelledLesson extends LessonBase {
+  status: 'member_cancelled'
+  completionSource?: never
+  consumedAt?: never
+}
+
+interface ReleasedCoachCancellation extends LessonBase {
+  status: 'coach_cancelled_released'
+  completionSource?: never
+  consumedAt?: never
+}
+
+interface ConsumedCoachCancellation extends LessonBase {
+  status: 'coach_cancelled_consumed'
+  completionSource?: never
+  consumedAt: string
+}
+
+interface CompletedLesson extends LessonBase {
+  status: 'completed'
+  completionSource: LessonCompletionSource
+  consumedAt: string
+}
+
+export type Lesson =
+  | BookedLesson
+  | MemberCancelledLesson
+  | ReleasedCoachCancellation
+  | ConsumedCoachCancellation
+  | CompletedLesson
+
 export type AppealStatus = 'pending' | 'approved' | 'rejected'
 
-export interface Appeal {
+interface AppealBase {
   id: string
   lessonId: string
   memberId: string
   reason: string
   note?: string
-  status: AppealStatus
   createdAt: string
-  decidedBy?: string
-  decidedAt?: string
-  decisionNote?: string
-  lessonRefunded: boolean
 }
+
+interface PendingAppeal extends AppealBase {
+  status: 'pending'
+  handledBy?: never
+  handledAt?: never
+  decisionNote?: never
+  refundedAt?: never
+  lessonRefunded: false
+}
+
+interface ApprovedAppeal extends AppealBase {
+  status: 'approved'
+  handledBy: string
+  handledAt: string
+  decisionNote: string
+  refundedAt: string
+  lessonRefunded: true
+}
+
+interface RejectedAppeal extends AppealBase {
+  status: 'rejected'
+  handledBy: string
+  handledAt: string
+  decisionNote: string
+  refundedAt?: never
+  lessonRefunded: false
+}
+
+export type Appeal = PendingAppeal | ApprovedAppeal | RejectedAppeal
 
 export interface ApiRequest<TPayload = unknown> {
   action: string

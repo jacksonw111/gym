@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  canMemberCancel,
-  canSubmitAppeal,
-  createDefaultSlots,
-} from '../../miniprogram/shared/time'
+import { canMemberCancel, canSubmitAppeal, createDefaultSlots } from '../../miniprogram/shared/time'
 
 describe('lesson time rules', () => {
   it('creates eleven one-hour slots from 10:00 through 21:00', () => {
@@ -19,6 +15,18 @@ describe('lesson time rules', () => {
       endsAt: '2026-08-01T21:00:00+08:00',
       label: '20:00–21:00',
     })
+
+    for (const [index, slot] of slots.entries()) {
+      expect(Date.parse(slot.endsAt) - Date.parse(slot.startsAt)).toBe(60 * 60 * 1000)
+      if (index > 0) {
+        expect(slot.startsAt).toBe(slots[index - 1]?.endsAt)
+      }
+    }
+  })
+
+  it('rejects dates that are not valid YYYY-MM-DD calendar dates', () => {
+    expect(() => createDefaultSlots('2026-8-1')).toThrow('INVALID_DATE')
+    expect(() => createDefaultSlots('2026-02-30')).toThrow('INVALID_DATE')
   })
 
   it('allows member cancellation at exactly two hours but not one minute later', () => {

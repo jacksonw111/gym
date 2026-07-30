@@ -3,7 +3,9 @@
   "files": {
     "includes": [
       "miniprogram/**/*.ts",
+      "tests/**/*.ts",
       "typings/**/*.d.ts",
+      "vitest.config.ts",
       "*.json",
       "!project.private.config.json",
       "!node_modules",

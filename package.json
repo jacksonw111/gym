@@ -11,8 +11,8 @@
     "cloud:test": "vitest run cloudfunctions",
     "format": "biome format --write . && prettier --write \"miniprogram/**/*.{wxml,less}\"",
     "lint": "biome lint . && stylelint \"miniprogram/**/*.less\"",
-    "typecheck": "tsc --noEmit",
-    "check": "biome check . && prettier --check \"miniprogram/**/*.{wxml,less}\" && stylelint \"miniprogram/**/*.less\" && tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
+    "check": "biome check . && prettier --check \"miniprogram/**/*.{wxml,less}\" && stylelint \"miniprogram/**/*.less\" && npm run typecheck",
     "verify": "npm run check && npm run test"
   },
   "dependencies": {
@@ -22,6 +22,7 @@
     "@babel/generator": "7.28.3",
     "@babel/parser": "7.28.3",
     "@biomejs/biome": "2.5.6",
+    "@types/node": "26.1.2",
     "miniprogram-api-typings": "5.2.2",
     "prettier": "3.9.6",
     "prettier-plugin-mp": "2.5.0",
