@@ -1,0 +1,94 @@
+<navigation-bar title="教练与预约" color="#242321" background="#f4f0e8" />
+<view class="coach-header">
+  <text class="eyebrow">COACH / 教练</text>
+  <view class="coach-header__name">{{coachName}}</view>
+  <text class="coach-header__bio">{{coachBio}}</text>
+</view>
+<scroll-view class="date-strip" scroll-x enable-flex>
+  <view
+    wx:for="{{dates}}"
+    wx:key="date"
+    class="date {{selectedDate === item.date ? 'date--active' : ''}}"
+    data-date="{{item.date}}"
+    bindtap="chooseDate"
+  >
+    <text class="date__weekday">{{item.weekday}}</text>
+    <text class="date__day">{{item.day}}</text>
+  </view>
+</scroll-view>
+<view class="schedule">
+  <view class="legend">
+    <view class="legend__item">
+      <view class="dot dot--available"></view>
+      <text>可预约</text>
+    </view>
+    <view class="legend__item">
+      <view class="dot dot--occupied"></view>
+      <text>已预约</text>
+    </view>
+    <view class="legend__item">
+      <view class="dot dot--mine"></view>
+      <text>我的预约</text>
+    </view>
+    <view class="legend__item">
+      <view class="dot dot--closed"></view>
+      <text>未开放</text>
+    </view>
+  </view>
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在读取排班</view>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">课程表加载失败</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <view wx:else class="slot-list">
+    <view wx:if="{{!memberships.length}}" class="package-notice">
+      没有绑定 {{coachName}} 教练且有剩余课时的课包，当前仅可查看排班。
+    </view>
+    <view
+      wx:for="{{slots}}"
+      wx:key="startsAt"
+      class="slot slot--{{item.status}}"
+      data-starts="{{item.startsAt}}"
+      bindtap="chooseSlot"
+      aria-role="button"
+      aria-disabled="{{item.status !== 'available'}}"
+      aria-label="{{item.time}} {{item.label}}"
+    >
+      <text class="slot__time">{{item.time}}</text>
+      <text class="slot__status">{{item.label}}</text>
+    </view>
+  </view>
+</view>
+<view wx:if="{{selectedSlot}}" class="booking-panel">
+  <view class="booking-panel__handle"></view>
+  <view class="booking-panel__heading">
+    <view>
+      <text class="eyebrow">确认预约</text>
+      <view class="booking-panel__title">{{coachName}} · {{selectedSlot.time}}</view>
+      <text class="muted">{{selectedDate}}</text>
+    </view>
+    <text class="booking-panel__close" bindtap="closePanel">关闭</text>
+  </view>
+  <view class="booking-panel__label">使用课包</view>
+  <view
+    wx:for="{{memberships}}"
+    wx:key="id"
+    class="package-choice {{selectedMembershipId === item.id ? 'package-choice--active' : ''}}"
+    data-id="{{item.id}}"
+    bindtap="chooseMembership"
+  >
+    <text>{{item.productName}}</text>
+    <text>{{item.availableLessons}} 节可用 · {{selectedMembershipId === item.id ? '已选' : '选择'}}</text>
+  </view>
+  <button
+    class="primary-button"
+    loading="{{submitting}}"
+    disabled="{{submitting}}"
+    bindtap="confirmBooking"
+  >
+    {{submitting ? '正在预约' : '确认预约'}}
+  </button>
+</view>

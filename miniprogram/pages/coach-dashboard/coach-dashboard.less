@@ -1,0 +1,148 @@
+.dashboard {
+  padding-top: 40rpx;
+}
+
+.dashboard__heading view {
+  max-width: 620rpx;
+  margin-top: 12rpx;
+  font-size: 46rpx;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.dashboard__count {
+  display: flex;
+  min-height: 156rpx;
+  margin-top: 30rpx;
+  border-top: 2rpx solid var(--color-ink);
+  border-bottom: 2rpx solid var(--color-ink);
+  align-items: center;
+  gap: 18rpx;
+}
+
+.dashboard__count > text {
+  color: var(--color-primary);
+  font-size: 92rpx;
+  font-weight: 900;
+}
+
+.dashboard__count view {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline {
+  padding-top: 26rpx;
+}
+
+.timeline-item {
+  display: grid;
+  min-height: 210rpx;
+  padding: 26rpx 0;
+  border-bottom: 2rpx solid var(--color-line);
+  grid-template-columns: 152rpx 1fr;
+}
+
+.timeline-item--next {
+  margin: 0 -18rpx;
+  padding: 26rpx 18rpx;
+  background: var(--color-signal);
+  border-color: var(--color-ink);
+}
+
+.timeline-item__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.timeline-item__time {
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.timeline-item__next {
+  width: min-content;
+  padding: 4rpx 8rpx;
+  color: var(--color-surface);
+  background: var(--color-primary);
+  font-size: 18rpx;
+  font-weight: 900;
+}
+
+.timeline-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.timeline-item__member {
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.timeline-item__status {
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.timeline-item__contact {
+  display: block;
+  margin: 12rpx 0 6rpx;
+  font-size: 24rpx;
+}
+
+.timeline-item__actions {
+  display: flex;
+  margin-top: 20rpx;
+  gap: 12rpx;
+}
+
+.timeline-item__actions button {
+  min-height: 76rpx;
+  padding: 0 18rpx;
+  font-size: 24rpx;
+  flex: 1;
+}
+
+.cancel-panel {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  padding: 32rpx 32rpx calc(30rpx + env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 4rpx solid var(--color-ink);
+}
+
+.cancel-panel__heading {
+  display: flex;
+  justify-content: space-between;
+}
+
+.cancel-panel__title {
+  margin-top: 10rpx;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.cancel-panel__close {
+  min-width: 88rpx;
+  min-height: 72rpx;
+  color: var(--color-primary);
+  font-size: 24rpx;
+  font-weight: 800;
+  text-align: right;
+}
+
+.cancel-panel__note {
+  display: block;
+  margin: 22rpx 0;
+  font-size: 24rpx;
+}
+
+.cancel-panel button {
+  width: 100%;
+  margin-top: 12rpx;
+}

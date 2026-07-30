@@ -1,0 +1,14 @@
+<view class="tab-bar">
+  <view
+    wx:for="{{tabs}}"
+    wx:key="key"
+    class="tab-bar__item {{current === item.key ? 'tab-bar__item--active' : ''}}"
+    data-url="{{item.url}}"
+    bindtap="navigate"
+    aria-role="button"
+    aria-label="{{item.label}}"
+  >
+    <text class="tab-bar__mark">{{item.mark}}</text>
+    <text class="tab-bar__label">{{item.label}}</text>
+  </view>
+</view>

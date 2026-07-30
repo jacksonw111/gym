@@ -1,0 +1,64 @@
+<navigation-bar
+  title="教练排班"
+  back="{{false}}"
+  color="#242321"
+  background="#f4f0e8"
+ />
+<view class="page-shell schedule-page">
+  <view class="schedule-heading">
+    <text class="eyebrow">AVAILABILITY</text>
+    <view>开放时间</view>
+    <text class="muted">默认每日 10:00–21:00 全开放。已有预约的时段会锁定。</text>
+  </view>
+  <scroll-view class="date-strip" scroll-x enable-flex>
+    <view
+      wx:for="{{dates}}"
+      wx:key="date"
+      class="date {{selectedDate === item.date ? 'date--active' : ''}}"
+      data-date="{{item.date}}"
+      bindtap="selectDate"
+    >
+      <text>{{item.label}}</text>
+      <text class="date__day">{{item.day}}</text>
+    </view>
+  </scroll-view>
+  <view class="bulk-actions">
+    <button class="secondary-button" disabled="{{submitting}}" bindtap="openAll">全部开放</button>
+    <button class="secondary-button" disabled="{{submitting}}" bindtap="closeAll">全部关闭</button>
+  </view>
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在读取排班</view>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">排班加载失败</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <view wx:else class="slots">
+    <view
+      wx:for="{{slots}}"
+      wx:key="startsAt"
+      class="schedule-slot {{item.locked ? 'schedule-slot--locked' : ''}}"
+    >
+      <view class="schedule-slot__time">
+        <text>{{item.label}}</text>
+        <text wx:if="{{item.locked}}" class="schedule-slot__booking">
+          {{item.memberName}} · {{item.lesson.status === 'booked' ? '已预约' : '已处理'}}
+        </text>
+        <text wx:else class="muted">{{item.open ? '可被会员预约' : '当前未开放'}}</text>
+      </view>
+      <view
+        class="switch {{item.open ? 'switch--on' : ''}} {{item.locked ? 'switch--locked' : ''}}"
+        data-starts="{{item.startsAt}}"
+        bindtap="toggleSlot"
+        aria-role="switch"
+        aria-checked="{{item.open}}"
+        aria-disabled="{{item.locked}}"
+        aria-label="{{item.label}} {{item.locked ? '已有预约，需先处理' : item.open ? '已开放' : '已关闭'}}"
+      >
+        <text>{{item.locked ? '已锁定' : item.open ? '开放' : '关闭'}}</text>
+      </view>
+    </view>
+  </view>
+</view>
+<app-tab-bar role="coach" current="schedule" />

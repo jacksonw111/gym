@@ -1,0 +1,77 @@
+<navigation-bar title="购买课包" color="#242321" background="#f4f0e8" />
+<view class="checkout">
+  <view wx:if="{{testPayment}}" class="test-banner">
+    <text class="test-banner__label">开发测试支付</text>
+    <text>仅用于本地验收，不代表真实扣款或云端订单。</text>
+  </view>
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在读取课包</view>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">暂时无法加载</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{!products.length || !coaches.length}}" class="state-panel">
+      <view class="state-panel__title">暂时无法组合课包</view>
+      <text>{{!products.length ? '目前没有上架课包。' : '目前没有可选的在职教练。'}}</text>
+      <button class="secondary-button" bindtap="load">重新加载</button>
+    </view>
+    <block wx:else>
+      <view class="step">
+        <text class="step__number">01</text>
+        <text class="step__title">选择训练课包</text>
+      </view>
+      <view
+        wx:for="{{products}}"
+        wx:key="id"
+        class="choice {{selectedProductId === item.id ? 'choice--active' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="selectProduct"
+        aria-role="radio"
+        aria-checked="{{selectedProductId === item.id}}"
+      >
+        <view>
+          <view class="choice__title">{{item.name}}</view>
+          <text class="muted">{{item.lessonCount}} 节 · 永久有效</text>
+        </view>
+        <text class="choice__price">{{item.price}}</text>
+      </view>
+      <view class="step step--coach">
+        <text class="step__number">02</text>
+        <text class="step__title">选择绑定教练</text>
+      </view>
+      <view
+        wx:for="{{coaches}}"
+        wx:key="id"
+        class="choice coach-choice {{selectedCoachId === item.id ? 'choice--active' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="selectCoach"
+        aria-role="radio"
+        aria-checked="{{selectedCoachId === item.id}}"
+      >
+        <view class="coach-choice__mark">{{item.monogram}}</view>
+        <view class="coach-choice__copy">
+          <view class="choice__title">{{item.name}} 教练</view>
+          <text class="muted">{{item.bio}}</text>
+        </view>
+        <text class="choice__check">{{selectedCoachId === item.id ? '已选' : '选择'}}</text>
+      </view>
+    </block>
+  </block>
+</view>
+<view class="checkout-bar">
+  <view class="checkout-bar__copy">
+    <text>课包将永久绑定所选教练</text>
+    <text class="muted">{{testPayment ? '开发测试支付' : '微信支付'}}</text>
+  </view>
+  <button
+    class="primary-button checkout-bar__button"
+    loading="{{submitting}}"
+    disabled="{{submitting}}"
+    bindtap="submit"
+  >
+    {{submitting ? '处理中' : '确认购买'}}
+  </button>
+</view>

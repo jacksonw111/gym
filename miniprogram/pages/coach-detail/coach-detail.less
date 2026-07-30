@@ -1,0 +1,210 @@
+.coach-header {
+  padding: 40rpx 32rpx 32rpx;
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.coach-header__name {
+  margin-top: 12rpx;
+  font-size: 54rpx;
+  font-weight: 900;
+}
+
+.coach-header__bio {
+  display: block;
+  margin-top: 10rpx;
+  color: #d2cdc3;
+  font-size: 24rpx;
+}
+
+.date-strip {
+  width: 100%;
+  padding: 22rpx 24rpx;
+  border-bottom: 2rpx solid var(--color-line);
+  white-space: nowrap;
+}
+
+.date {
+  display: inline-flex;
+  width: 96rpx;
+  min-height: 112rpx;
+  margin-right: 10rpx;
+  border: 2rpx solid transparent;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.date--active {
+  color: var(--color-surface);
+  background: var(--color-primary);
+}
+
+.date__weekday {
+  font-size: 20rpx;
+}
+
+.date__day {
+  margin-top: 8rpx;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.schedule {
+  padding: 24rpx 32rpx 80rpx;
+}
+
+.legend {
+  display: flex;
+  margin-bottom: 22rpx;
+  color: var(--color-ink-soft);
+  font-size: 20rpx;
+  flex-wrap: wrap;
+  gap: 14rpx 22rpx;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+}
+
+.dot {
+  width: 14rpx;
+  height: 14rpx;
+  margin-right: 7rpx;
+  background: var(--color-line);
+}
+
+.dot--available {
+  background: var(--color-success);
+}
+
+.dot--occupied {
+  background: var(--color-primary);
+}
+
+.dot--mine {
+  background: var(--color-signal);
+  border: 2rpx solid var(--color-ink);
+}
+
+.slot {
+  display: flex;
+  min-height: 92rpx;
+  padding: 0 20rpx;
+  border-top: 2rpx solid var(--color-line);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.package-notice {
+  margin-bottom: 18rpx;
+  padding: 18rpx;
+  color: var(--color-danger);
+  background: #f1ddd6;
+  font-size: 23rpx;
+  line-height: 1.5;
+}
+
+.slot__time {
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.slot__status {
+  min-width: 132rpx;
+  padding: 10rpx 14rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+  text-align: center;
+}
+
+.slot--available .slot__status {
+  color: var(--color-surface);
+  background: var(--color-success);
+}
+
+.slot--occupied .slot__status {
+  color: var(--color-surface);
+  background: var(--color-primary);
+}
+
+.slot--mine .slot__status {
+  color: var(--color-ink);
+  background: var(--color-signal);
+}
+
+.slot--closed {
+  color: #8b877f;
+}
+
+.slot--closed .slot__status {
+  border: 2rpx solid var(--color-line);
+}
+
+.booking-panel {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  padding: 16rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 4rpx solid var(--color-ink);
+}
+
+.booking-panel__handle {
+  width: 72rpx;
+  height: 6rpx;
+  margin: 0 auto 24rpx;
+  background: var(--color-line);
+}
+
+.booking-panel__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.booking-panel__title {
+  margin: 8rpx 0;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.booking-panel__close {
+  min-width: 88rpx;
+  min-height: 72rpx;
+  padding-top: 12rpx;
+  color: var(--color-primary);
+  font-size: 24rpx;
+  font-weight: 800;
+  text-align: right;
+}
+
+.booking-panel__label {
+  margin: 28rpx 0 12rpx;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.package-choice {
+  display: flex;
+  min-height: 84rpx;
+  margin-bottom: 12rpx;
+  padding: 18rpx;
+  border: 2rpx solid var(--color-line);
+  font-size: 24rpx;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.package-choice--active {
+  border-color: var(--color-primary);
+  border-width: 4rpx;
+}
+
+.booking-panel button {
+  width: 100%;
+  margin-top: 20rpx;
+}

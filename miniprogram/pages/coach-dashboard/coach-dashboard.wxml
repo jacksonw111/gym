@@ -1,0 +1,99 @@
+<navigation-bar
+  title="教练工作台"
+  back="{{false}}"
+  color="#242321"
+  background="#f4f0e8"
+ />
+<view class="page-shell dashboard">
+  <view class="dashboard__heading">
+    <text class="eyebrow">TODAY / {{date}}</text>
+    <view>{{coachName}}，看好今天的每一节。</view>
+  </view>
+  <view class="dashboard__count">
+    <text>{{lessons.length}}</text>
+    <view>
+      <text>节课程</text>
+      <text class="muted">按开始时间排列</text>
+    </view>
+  </view>
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在整理今日时间线</view>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">工作台加载失败</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <view wx:elif="{{!lessons.length}}" class="state-panel">
+    <view class="state-panel__title">今天没有课程</view>
+    <text>可以前往排班检查开放时段。</text>
+  </view>
+  <view wx:else class="timeline">
+    <view
+      wx:for="{{lessons}}"
+      wx:key="id"
+      class="timeline-item {{item.isNext ? 'timeline-item--next' : ''}}"
+    >
+      <view class="timeline-item__rail">
+        <text class="timeline-item__time">{{item.timeLabel}}</text>
+        <text wx:if="{{item.isNext}}" class="timeline-item__next">NEXT</text>
+      </view>
+      <view class="timeline-item__content">
+        <view class="timeline-item__top">
+          <text class="timeline-item__member">{{item.memberName}}</text>
+          <text class="timeline-item__status">{{item.statusText}}</text>
+        </view>
+        <text class="timeline-item__contact">联系方式 {{item.memberPhone}}</text>
+        <text class="muted">{{item.packageName}}</text>
+        <view wx:if="{{item.status === 'booked'}}" class="timeline-item__actions">
+          <button
+            class="secondary-button"
+            data-id="{{item.id}}"
+            disabled="{{submitting}}"
+            bindtap="openCancel"
+          >
+            临时取消
+          </button>
+          <button
+            wx:if="{{item.hasEnded}}"
+            class="primary-button"
+            data-id="{{item.id}}"
+            disabled="{{submitting}}"
+            bindtap="complete"
+          >
+            确认完成
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+<view wx:if="{{selectedLesson}}" class="cancel-panel">
+  <view class="cancel-panel__heading">
+    <view>
+      <text class="eyebrow">临时取消</text>
+      <view class="cancel-panel__title">
+        {{selectedLesson.memberName}} · {{selectedLesson.timeLabel}}
+      </view>
+    </view>
+    <text class="cancel-panel__close" bindtap="closeCancel">关闭</text>
+  </view>
+  <text class="cancel-panel__note">必须明确选择本次是否消耗 1 节课。</text>
+  <button
+    class="secondary-button"
+    loading="{{submitting}}"
+    disabled="{{submitting}}"
+    bindtap="cancelWithoutConsume"
+  >
+    取消，不消耗课时
+  </button>
+  <button
+    class="primary-button"
+    loading="{{submitting}}"
+    disabled="{{submitting}}"
+    bindtap="cancelWithConsume"
+  >
+    取消，并消耗 1 节
+  </button>
+</view>
+<app-tab-bar role="coach" current="dashboard" />

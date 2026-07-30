@@ -1,8 +1,20 @@
 {
-  "pages": ["pages/index/index"],
+  "pages": [
+    "pages/member-home/member-home",
+    "pages/member-lessons/member-lessons",
+    "pages/member-profile/member-profile",
+    "pages/package-checkout/package-checkout",
+    "pages/coach-detail/coach-detail",
+    "pages/lesson-detail/lesson-detail",
+    "pages/coach-dashboard/coach-dashboard",
+    "pages/coach-schedule/coach-schedule",
+    "pages/coach-profile/coach-profile"
+  ],
   "window": {
     "navigationBarTextStyle": "black",
-    "navigationStyle": "custom"
+    "navigationStyle": "custom",
+    "backgroundColor": "#f4f0e8",
+    "backgroundTextStyle": "dark"
   },
   "rendererOptions": {
     "skyline": {

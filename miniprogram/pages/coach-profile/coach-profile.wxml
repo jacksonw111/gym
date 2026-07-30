@@ -1,0 +1,54 @@
+<navigation-bar
+  title="教练资料"
+  back="{{false}}"
+  color="#242321"
+  background="#f4f0e8"
+ />
+<view class="page-shell coach-profile">
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在读取教练资料</view>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">资料加载失败</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <block wx:else>
+    <view class="coach-card">
+      <view class="coach-card__mark">P</view>
+      <text class="eyebrow">PURUI COACH</text>
+      <view class="coach-card__name">{{name}}</view>
+      <text class="coach-card__bio">{{bio}}</text>
+    </view>
+    <view class="coach-stat">
+      <text class="coach-stat__value">{{todayLessons}}</text>
+      <view>
+        <text>今日课程</text>
+        <text class="muted">按工作台时间线执行</text>
+      </view>
+    </view>
+    <view class="section-title">联系资料</view>
+    <view class="info-row">
+      <text>联系电话</text>
+      <text>{{phone}}</text>
+    </view>
+    <view class="info-row">
+      <text>任职状态</text>
+      <text class="active-status">在职 · 可接受预约</text>
+    </view>
+    <view wx:if="{{dualRole}}" class="role-switch">
+      <text class="eyebrow">双身份账户</text>
+      <view class="role-switch__title">回到会员端</view>
+      <text>查看自己的课包、预约与训练历史。</text>
+      <button
+        class="secondary-button"
+        loading="{{switching}}"
+        disabled="{{switching}}"
+        bindtap="switchToMember"
+      >
+        切换为会员
+      </button>
+    </view>
+  </block>
+</view>
+<app-tab-bar role="coach" current="profile" />

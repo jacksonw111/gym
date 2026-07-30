@@ -1,0 +1,95 @@
+<navigation-bar
+  title="普瑞健身"
+  back="{{false}}"
+  color="#242321"
+  background="#f4f0e8"
+ />
+<view class="page-shell">
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在整理你的训练计划</view>
+    <text>课包与预约马上就绪</text>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">暂时无法加载</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重新加载</button>
+  </view>
+  <block wx:else>
+    <view class="hero">
+      <text class="eyebrow">PURUI TRAINING</text>
+      <view class="hero__greeting">{{userName}}，今天也要稳稳发力。</view>
+      <view class="balance">
+        <text class="balance__number">{{totalAvailable}}</text>
+        <view>
+          <text class="balance__unit">节可预约</text>
+          <text class="balance__hint">已购课包总剩余</text>
+        </view>
+      </view>
+    </view>
+    <view
+      wx:if="{{nextLesson}}"
+      class="next surface"
+      data-id="{{nextLesson.id}}"
+      bindtap="openLesson"
+    >
+      <view>
+        <text class="next__flag">NEXT / 下一节</text>
+        <view class="next__time">{{nextLesson.time}}</view>
+        <text class="muted">{{nextLesson.coachName}} 教练</text>
+      </view>
+      <text class="next__arrow">→</text>
+    </view>
+    <view class="section-heading">
+      <text class="section-title">我的训练权益</text>
+      <text class="section-link" bindtap="openCheckout">继续购买</text>
+    </view>
+    <view wx:if="{{memberships.length}}">
+      <view
+        wx:for="{{memberships}}"
+        wx:key="id"
+        class="membership"
+        data-id="{{item.coachId}}"
+        bindtap="openCoach"
+      >
+        <view class="membership__main">
+          <text class="membership__name">{{item.productName}}</text>
+          <text class="muted">绑定 {{item.coachName}} 教练 · {{item.price}}</text>
+        </view>
+        <view class="membership__balance">
+          <text>{{item.availableLessons}}</text>
+          <text class="membership__unit">节</text>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-strip">
+      <text>还没有训练课包。选一位合拍的教练，从第一节开始。</text>
+      <button class="primary-button" bindtap="openCheckout">选择课包与教练</button>
+    </view>
+    <view class="section-title">在馆教练</view>
+    <scroll-view class="coach-row" scroll-x enable-flex>
+      <view
+        wx:for="{{coaches}}"
+        wx:key="id"
+        class="coach"
+        data-id="{{item.id}}"
+        bindtap="openCoach"
+      >
+        <view class="coach__monogram">{{item.monogram}}</view>
+        <view>
+          <view class="coach__name">{{item.name}}</view>
+          <text class="coach__bio">{{item.bio}}</text>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="section-title">可购课包</view>
+    <view wx:for="{{products}}" wx:key="id" class="product">
+      <view>
+        <view class="product__name">{{item.name}}</view>
+        <text class="muted">{{item.lessonCount}} 节 · 永久有效</text>
+      </view>
+      <text class="product__price">{{item.price}}</text>
+    </view>
+    <button class="primary-button buy-button" bindtap="openCheckout">购买训练课包</button>
+  </block>
+</view>
+<app-tab-bar role="member" current="home" />

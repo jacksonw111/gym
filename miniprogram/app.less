@@ -2,13 +2,85 @@
 
 page {
   min-height: 100%;
-  color: #1f2329;
-  background: #f7f8fa;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 view,
 text,
-scroll-view {
+scroll-view,
+button,
+input,
+textarea {
   box-sizing: border-box;
+}
+
+button {
+  min-height: 88rpx;
+  margin: 0;
+  border-radius: 8rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+button::after {
+  border: 0;
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: 0 var(--space-page) calc(144rpx + env(safe-area-inset-bottom));
+}
+
+.section-title {
+  margin: 48rpx 0 20rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+}
+
+.primary-button {
+  color: #fffaf1;
+  background: var(--color-primary);
+}
+
+.secondary-button {
+  color: var(--color-ink);
+  background: transparent;
+  border: 2rpx solid var(--color-ink);
+}
+
+.muted {
+  color: var(--color-ink-soft);
+}
+
+.state-panel {
+  padding: 80rpx 24rpx;
+  color: var(--color-ink-soft);
+  text-align: center;
+}
+
+.state-panel__title {
+  margin-bottom: 12rpx;
+  color: var(--color-ink);
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.state-panel button {
+  min-width: 240rpx;
+  margin: 32rpx auto 0;
+}
+
+.eyebrow {
+  color: var(--color-primary);
+  font-size: 22rpx;
+  font-weight: 800;
+  letter-spacing: 4rpx;
+}
+
+.surface {
+  background: var(--color-surface);
+  border: 2rpx solid var(--color-line);
 }

@@ -1,0 +1,125 @@
+.checkout {
+  min-height: 100vh;
+  padding: 24rpx 32rpx 220rpx;
+}
+
+.test-banner {
+  display: flex;
+  margin-bottom: 36rpx;
+  padding: 20rpx;
+  background: var(--color-signal);
+  font-size: 23rpx;
+  line-height: 1.5;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.test-banner__label {
+  font-weight: 900;
+}
+
+.step {
+  display: flex;
+  margin: 18rpx 0 20rpx;
+  border-bottom: 2rpx solid var(--color-ink);
+  align-items: baseline;
+  gap: 16rpx;
+}
+
+.step--coach {
+  margin-top: 56rpx;
+}
+
+.step__number {
+  color: var(--color-primary);
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.step__title {
+  padding-bottom: 14rpx;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.choice {
+  display: flex;
+  min-height: 132rpx;
+  margin-bottom: 16rpx;
+  padding: 24rpx;
+  background: var(--color-surface);
+  border: 2rpx solid var(--color-line);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.choice--active {
+  border: 4rpx solid var(--color-primary);
+}
+
+.choice__title {
+  margin-bottom: 8rpx;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.choice__price {
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.coach-choice {
+  justify-content: flex-start;
+}
+
+.coach-choice__mark {
+  display: flex;
+  width: 76rpx;
+  height: 76rpx;
+  flex: 0 0 auto;
+  color: var(--color-surface);
+  background: var(--color-ink);
+  font-size: 30rpx;
+  font-weight: 900;
+  align-items: center;
+  justify-content: center;
+}
+
+.coach-choice__copy {
+  min-width: 0;
+  margin-left: 20rpx;
+  flex: 1;
+}
+
+.choice__check {
+  color: var(--color-primary);
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.checkout-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  min-height: calc(150rpx + env(safe-area-inset-bottom));
+  padding: 22rpx 32rpx calc(22rpx + env(safe-area-inset-bottom));
+  background: var(--color-ink);
+  color: var(--color-surface);
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.checkout-bar__copy {
+  display: flex;
+  font-size: 22rpx;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.checkout-bar__button {
+  min-width: 240rpx;
+}

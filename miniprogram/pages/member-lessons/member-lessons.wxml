@@ -1,0 +1,91 @@
+<navigation-bar
+  title="我的课程"
+  back="{{false}}"
+  color="#242321"
+  background="#f4f0e8"
+ />
+<view class="page-shell lessons-page">
+  <view class="page-title">
+    <text class="eyebrow">TRAINING LOG</text>
+    <view>每一节，都算数。</view>
+  </view>
+  <view class="tabs">
+    <view
+      class="tab {{tab === 'upcoming' ? 'tab--active' : ''}}"
+      data-tab="upcoming"
+      bindtap="switchTab"
+    >
+      待上课 · {{upcoming.length}}
+    </view>
+    <view
+      class="tab {{tab === 'history' ? 'tab--active' : ''}}"
+      data-tab="history"
+      bindtap="switchTab"
+    >
+      历史
+    </view>
+  </view>
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在读取课程记录</view>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">暂时无法加载</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <block wx:elif="{{tab === 'upcoming'}}">
+    <view
+      wx:for="{{upcoming}}"
+      wx:key="id"
+      class="lesson lesson--upcoming"
+      data-id="{{item.id}}"
+      bindtap="openLesson"
+    >
+      <view class="lesson__date">
+        <text>{{item.dateLabel}}</text>
+        <text class="lesson__time">{{item.timeLabel}}</text>
+      </view>
+      <view class="lesson__body">
+        <view class="lesson__coach">{{item.coachName}} 教练</view>
+        <text class="muted">{{item.packageName}}</text>
+        <text wx:if="{{item.cancelHint}}" class="lesson__hint">{{item.cancelHint}}</text>
+      </view>
+      <text class="lesson__arrow">→</text>
+    </view>
+    <view wx:if="{{!upcoming.length}}" class="state-panel">
+      <view class="state-panel__title">还没有待上课程</view>
+      <text>从首页进入已绑定教练的排班，选一个合适时段。</text>
+    </view>
+  </block>
+  <block wx:else>
+    <view wx:for="{{historyGroups}}" wx:key="month" class="history-group">
+      <view class="history-group__month">{{item.month}}</view>
+      <view
+        wx:for="{{item.lessons}}"
+        wx:key="id"
+        wx:for-item="lesson"
+        class="lesson lesson--history"
+        data-id="{{lesson.id}}"
+        bindtap="openLesson"
+      >
+        <view class="lesson__date">
+          <text>{{lesson.dateLabel}}</text>
+          <text class="lesson__time">{{lesson.timeLabel}}</text>
+        </view>
+        <view class="lesson__body">
+          <view class="lesson__coach">{{lesson.coachName}} · {{lesson.statusText}}</view>
+          <text wx:if="{{lesson.appeal}}" class="lesson__appeal">
+            申诉：{{lesson.appeal.status === 'pending' ? '处理中' : lesson.appeal.status === 'approved' ? '已通过' : '未通过'}}
+          </text>
+          <text wx:elif="{{lesson.canAppeal}}" class="lesson__appeal">7 天内可申诉</text>
+        </view>
+        <text class="lesson__arrow">→</text>
+      </view>
+    </view>
+    <view wx:if="{{!historyGroups.length}}" class="state-panel">
+      <view class="state-panel__title">历史记录还是空的</view>
+      <text>完成或取消的课程会按月份归档在这里。</text>
+    </view>
+  </block>
+</view>
+<app-tab-bar role="member" current="lessons" />

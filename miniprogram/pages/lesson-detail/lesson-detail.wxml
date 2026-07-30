@@ -1,0 +1,110 @@
+<navigation-bar title="课程详情" color="#242321" background="#f4f0e8" />
+<view class="detail-page">
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在读取课程</view>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">课程加载失败</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <block wx:elif="{{lesson}}">
+    <view class="detail-hero">
+      <text class="eyebrow">TRAINING SESSION</text>
+      <view class="detail-hero__status">{{lesson.statusText}}</view>
+      <view class="detail-hero__date">{{lesson.dateLabel}}</view>
+      <view class="detail-hero__time">{{lesson.timeLabel}}</view>
+    </view>
+    <view class="facts">
+      <view class="fact">
+        <text>教练</text>
+        <text>{{lesson.coachName}}</text>
+      </view>
+      <view class="fact">
+        <text>使用课包</text>
+        <text>{{lesson.packageName}}</text>
+      </view>
+      <view class="fact">
+        <text>课时处理</text>
+        <text>
+          {{lesson.status === 'completed' || lesson.status === 'coach_cancelled_consumed' ? '已消耗 1 节' : lesson.status === 'booked' ? '已锁定 1 节' : '已释放'}}
+        </text>
+      </view>
+    </view>
+    <view wx:if="{{lesson.status === 'booked'}}" class="action-section">
+      <view class="section-title">课程操作</view>
+      <text wx:if="{{lesson.cancelHint}}" class="warning">{{lesson.cancelHint}}</text>
+      <button
+        wx:if="{{lesson.canCancel}}"
+        class="secondary-button"
+        disabled="{{submitting}}"
+        bindtap="cancelLesson"
+      >
+        提前取消并释放课时
+      </button>
+      <view wx:if="{{lesson.canComplete}}" class="feedback">
+        <view class="feedback__title">课程已结束，可确认完成</view>
+        <text class="muted">星级和文字均可跳过</text>
+        <view class="stars">
+          <text
+            wx:for="{{[1, 2, 3, 4, 5]}}"
+            wx:key="*this"
+            class="star {{rating >= item ? 'star--active' : ''}}"
+            data-rating="{{item}}"
+            bindtap="selectRating"
+          >
+            ★
+          </text>
+        </view>
+        <textarea
+          class="textarea"
+          maxlength="200"
+          placeholder="训练感受（选填）"
+          value="{{comment}}"
+          bindinput="updateComment"
+        ></textarea>
+        <button
+          class="primary-button"
+          loading="{{submitting}}"
+          disabled="{{submitting}}"
+          bindtap="completeLesson"
+        >
+          确认完成
+        </button>
+      </view>
+    </view>
+    <view wx:if="{{lesson.appeal}}" class="appeal-result">
+      <view class="section-title">申诉结果</view>
+      <view class="appeal-result__status">
+        {{lesson.appeal.status === 'pending' ? '处理中' : lesson.appeal.status === 'approved' ? '已通过并退回 1 节' : '未通过'}}
+      </view>
+      <text wx:if="{{lesson.appeal.decisionNote}}" class="muted">{{lesson.appeal.decisionNote}}</text>
+    </view>
+    <view wx:elif="{{lesson.canAppeal}}" class="appeal">
+      <view class="section-title">课时申诉</view>
+      <text class="muted">消耗后 7 天内可提交一次，理由必填。</text>
+      <input
+        class="input"
+        maxlength="80"
+        placeholder="申诉理由"
+        value="{{appealReason}}"
+        bindinput="updateAppealReason"
+       />
+      <textarea
+        class="textarea"
+        maxlength="300"
+        placeholder="补充说明（选填）"
+        value="{{appealNote}}"
+        bindinput="updateAppealNote"
+      ></textarea>
+      <button
+        class="secondary-button"
+        loading="{{submitting}}"
+        disabled="{{submitting}}"
+        bindtap="submitAppeal"
+      >
+        提交申诉
+      </button>
+    </view>
+  </block>
+</view>

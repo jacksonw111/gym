@@ -1,0 +1,85 @@
+.lessons-page {
+  padding-top: 36rpx;
+}
+
+.page-title view {
+  margin-top: 10rpx;
+  font-size: 48rpx;
+  font-weight: 900;
+}
+
+.tabs {
+  display: flex;
+  margin: 40rpx 0 22rpx;
+  border-bottom: 2rpx solid var(--color-ink);
+}
+
+.tab {
+  min-height: 80rpx;
+  padding: 20rpx 24rpx;
+  color: var(--color-ink-soft);
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.tab--active {
+  color: var(--color-surface);
+  background: var(--color-ink);
+}
+
+.lesson {
+  display: grid;
+  min-height: 152rpx;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid var(--color-line);
+  grid-template-columns: 164rpx 1fr 40rpx;
+  align-items: center;
+}
+
+.lesson--upcoming {
+  border-bottom-color: var(--color-ink);
+}
+
+.lesson__date,
+.lesson__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.lesson__date {
+  font-size: 26rpx;
+  font-weight: 900;
+  gap: 6rpx;
+}
+
+.lesson__time {
+  color: var(--color-primary);
+  font-size: 22rpx;
+}
+
+.lesson__coach {
+  margin-bottom: 8rpx;
+  font-size: 29rpx;
+  font-weight: 800;
+}
+
+.lesson__hint,
+.lesson__appeal {
+  display: block;
+  margin-top: 10rpx;
+  color: var(--color-primary);
+  font-size: 21rpx;
+  font-weight: 700;
+}
+
+.lesson__arrow {
+  font-size: 34rpx;
+}
+
+.history-group__month {
+  margin: 36rpx 0 4rpx;
+  color: var(--color-ink-soft);
+  font-size: 24rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+}

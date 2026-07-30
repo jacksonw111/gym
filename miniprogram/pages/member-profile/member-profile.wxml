@@ -1,0 +1,54 @@
+<navigation-bar
+  title="我的"
+  back="{{false}}"
+  color="#242321"
+  background="#f4f0e8"
+ />
+<view class="page-shell profile-page">
+  <view wx:if="{{loading}}" class="state-panel">
+    <view class="state-panel__title">正在读取账户</view>
+  </view>
+  <view wx:elif="{{error}}" class="state-panel">
+    <view class="state-panel__title">资料加载失败</view>
+    <text>{{error}}</text>
+    <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <block wx:else>
+    <view class="identity">
+      <view class="identity__mark">{{name}}</view>
+      <text class="eyebrow">MEMBER / 会员</text>
+      <view class="identity__name">{{name}}</view>
+      <text class="muted">{{phone}}</text>
+    </view>
+    <view class="profile-stat">
+      <text class="profile-stat__value">{{totalAvailable}}</text>
+      <text>节课可预约</text>
+    </view>
+    <view class="section-title">课包摘要</view>
+    <view wx:for="{{memberships}}" wx:key="id" class="package-row">
+      <view>
+        <view class="package-row__name">{{item.productName}}</view>
+        <text class="muted">可用 {{item.availableLessons}} · 锁定 {{item.lockedLessons}} · 已用 {{item.usedLessons}}</text>
+      </view>
+      <text class="package-row__total">{{item.totalLessons}} 节</text>
+    </view>
+    <view wx:if="{{!memberships.length}}" class="state-panel">
+      <view class="state-panel__title">暂无课包</view>
+      <text>购买后会在这里看到剩余和使用情况。</text>
+    </view>
+    <view wx:if="{{dualRole}}" class="role-switch">
+      <text class="eyebrow">双身份账户</text>
+      <view class="role-switch__title">进入教练工作区</view>
+      <text class="muted">工作台会显示今日课程、会员联系方式和排班入口。</text>
+      <button
+        class="secondary-button"
+        loading="{{switching}}"
+        disabled="{{switching}}"
+        bindtap="switchToCoach"
+      >
+        切换为教练
+      </button>
+    </view>
+  </block>
+</view>
+<app-tab-bar role="member" current="profile" />

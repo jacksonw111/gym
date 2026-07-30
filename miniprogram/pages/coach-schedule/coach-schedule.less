@@ -1,0 +1,119 @@
+.schedule-page {
+  padding-top: 38rpx;
+}
+
+.schedule-heading view {
+  margin: 10rpx 0;
+  font-size: 48rpx;
+  font-weight: 900;
+}
+
+.schedule-heading > text:last-child {
+  display: block;
+  max-width: 620rpx;
+  line-height: 1.6;
+}
+
+.date-strip {
+  width: calc(100% + 64rpx);
+  margin: 34rpx -32rpx 0;
+  padding: 0 24rpx 20rpx;
+  border-bottom: 2rpx solid var(--color-line);
+  white-space: nowrap;
+}
+
+.date {
+  display: inline-flex;
+  width: 94rpx;
+  min-height: 108rpx;
+  margin-right: 10rpx;
+  border: 2rpx solid var(--color-line);
+  font-size: 21rpx;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.date--active {
+  color: var(--color-surface);
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+.date__day {
+  margin-top: 6rpx;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.bulk-actions {
+  display: flex;
+  margin: 24rpx 0;
+  gap: 16rpx;
+}
+
+.bulk-actions button {
+  flex: 1;
+}
+
+.slots {
+  border-top: 2rpx solid var(--color-ink);
+}
+
+.schedule-slot {
+  display: flex;
+  min-height: 112rpx;
+  padding: 14rpx 0;
+  border-bottom: 2rpx solid var(--color-line);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.schedule-slot--locked {
+  margin: 0 -14rpx;
+  padding: 14rpx;
+  background: #eee4c8;
+}
+
+.schedule-slot__time {
+  display: flex;
+  font-size: 27rpx;
+  font-weight: 900;
+  flex-direction: column;
+  gap: 7rpx;
+}
+
+.schedule-slot__time .muted,
+.schedule-slot__booking {
+  font-size: 21rpx;
+  font-weight: 500;
+}
+
+.schedule-slot__booking {
+  color: var(--color-primary);
+}
+
+.switch {
+  display: flex;
+  min-width: 118rpx;
+  min-height: 68rpx;
+  padding: 0 16rpx;
+  color: var(--color-ink-soft);
+  border: 2rpx solid var(--color-line);
+  font-size: 22rpx;
+  font-weight: 900;
+  align-items: center;
+  justify-content: center;
+}
+
+.switch--on {
+  color: var(--color-surface);
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.switch--locked {
+  color: var(--color-ink);
+  background: var(--color-signal);
+  border-color: var(--color-ink);
+}
