@@ -2,11 +2,21 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { callFunction } = vi.hoisted(() => ({ callFunction: vi.fn() }))
+const { callFunction, getLoginState, signIn } = vi.hoisted(() => ({
+  callFunction: vi.fn(),
+  getLoginState: vi.fn(async () => null),
+  signIn: vi.fn(async () => ({ isAnonymousAuth: true })),
+}))
 
 vi.mock('@cloudbase/js-sdk', () => ({
   default: {
-    init: () => ({ callFunction }),
+    init: () => ({
+      auth: () => ({
+        getLoginState,
+        anonymousAuthProvider: () => ({ signIn }),
+      }),
+      callFunction,
+    }),
   },
 }))
 
@@ -123,6 +133,8 @@ const appeal = {
 
 beforeEach(() => {
   callFunction.mockReset()
+  getLoginState.mockClear()
+  signIn.mockClear()
   sessionStorage.clear()
   sessionStorage.setItem('purui-admin-session', 'admin-token')
   callFunction.mockImplementation(async ({ data }) => {
@@ -143,6 +155,18 @@ beforeEach(() => {
 })
 
 describe('正式数据适配', () => {
+  it('第一次调用前完成匿名云身份登录，且并发请求只登录一次', async () => {
+    const api = createProductionApi('test-env')
+
+    await Promise.all([api.loadData(), api.loadData()])
+
+    expect(getLoginState).toHaveBeenCalledTimes(1)
+    expect(signIn).toHaveBeenCalledTimes(1)
+    expect(signIn.mock.invocationCallOrder[0]).toBeLessThan(
+      callFunction.mock.invocationCallOrder[0] ?? 0,
+    )
+  })
+
   it('把云端关联集合和分单位字段转换为后台视图模型', async () => {
     const data = await createProductionApi('test-env').loadData()
 

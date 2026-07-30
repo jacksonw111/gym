@@ -12,8 +12,16 @@ const SESSION_KEY = 'purui-admin-session'
 
 export const createProductionApi = (envId: string): AdminApi => {
   const app = cloudbase.init({ env: envId, timeout: 15_000, persistence: 'local' })
+  const auth = app.auth({ persistence: 'local' })
+  const cloudReady = (async () => {
+    const state = await auth.getLoginState()
+    if (!state) {
+      await auth.anonymousAuthProvider().signIn()
+    }
+  })()
 
   const call = async <T>(action: string, payload: Record<string, unknown> = {}): Promise<T> => {
+    await cloudReady
     const authToken = sessionStorage.getItem(SESSION_KEY)
     const response = await app.callFunction({
       name: 'gym-api',

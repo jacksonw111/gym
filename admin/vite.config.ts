@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     root: 'admin',
+    base: mode === 'production' ? '/admin/' : '/',
     plugins: [react()],
     build: {
       outDir: 'dist',

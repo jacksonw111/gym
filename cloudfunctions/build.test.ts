@@ -80,6 +80,12 @@ describe('CloudBase部署构建', () => {
               functions: Array<{ name: string; config: { handler?: string } }>
             }
           }
+          admin: {
+            inputs: {
+              outputPath: string
+              cloudPath: string
+            }
+          }
         }
       }
     }
@@ -103,5 +109,12 @@ describe('CloudBase部署构建', () => {
       { name: 'auto-complete-lessons', handler: 'dist/index.main' },
       { name: 'wechat-payment-notify', handler: 'dist/index.main' },
     ])
+    expect(cloudbase.framework.plugins.admin.inputs).toMatchObject({
+      outputPath: 'admin/dist',
+      cloudPath: '/admin',
+    })
+    expect(readFileSync(join(workspace, 'admin/vite.config.ts'), 'utf8')).toContain(
+      "mode === 'production' ? '/admin/' : '/'",
+    )
   })
 })
