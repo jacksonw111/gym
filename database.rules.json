@@ -1,0 +1,50 @@
+{
+  "users": {
+    "read": false,
+    "write": false
+  },
+  "coaches": {
+    "read": false,
+    "write": false
+  },
+  "package_products": {
+    "read": false,
+    "write": false
+  },
+  "membership_packages": {
+    "read": false,
+    "write": false
+  },
+  "orders": {
+    "read": false,
+    "write": false
+  },
+  "schedules": {
+    "read": false,
+    "write": false
+  },
+  "lessons": {
+    "read": false,
+    "write": false
+  },
+  "appeals": {
+    "read": false,
+    "write": false
+  },
+  "lesson_ledger": {
+    "read": false,
+    "write": false
+  },
+  "admins": {
+    "read": false,
+    "write": false
+  },
+  "admin_sessions": {
+    "read": false,
+    "write": false
+  },
+  "system_locks": {
+    "read": false,
+    "write": false
+  }
+}

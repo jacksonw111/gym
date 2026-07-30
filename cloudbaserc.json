@@ -1,0 +1,127 @@
+{
+  "$schema": "https://framework-1258016615.tcloudbaseapp.com/schema/latest.json",
+  "version": "2.0",
+  "envId": "{{env.CLOUDBASE_ENV_ID}}",
+  "functionRoot": "cloudfunctions",
+  "framework": {
+    "plugins": {
+      "admin": {
+        "use": "@cloudbase/framework-plugin-website",
+        "inputs": {
+          "buildCommand": "npm run admin:build",
+          "outputPath": "admin/dist",
+          "cloudPath": "/admin"
+        }
+      },
+      "database": {
+        "use": "@cloudbase/framework-plugin-database",
+        "inputs": {
+          "collections": [
+            {
+              "collectionName": "lessons",
+              "createIndexes": [
+                {
+                  "name": "coach_starts_unique",
+                  "keys": [
+                    {
+                      "name": "coachId",
+                      "direction": 1
+                    },
+                    {
+                      "name": "startsAt",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                },
+                {
+                  "name": "member_status",
+                  "keys": [
+                    {
+                      "name": "memberId",
+                      "direction": 1
+                    },
+                    {
+                      "name": "status",
+                      "direction": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "collectionName": "appeals",
+              "createIndexes": [
+                {
+                  "name": "appeal_status",
+                  "keys": [
+                    {
+                      "name": "status",
+                      "direction": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "collectionName": "orders",
+              "createIndexes": [
+                {
+                  "name": "payment_id_unique",
+                  "keys": [
+                    {
+                      "name": "paymentId",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "functions": {
+        "use": "@cloudbase/framework-plugin-function",
+        "inputs": {
+          "functionRootPath": "cloudfunctions",
+          "functions": [
+            {
+              "name": "gym-api",
+              "config": {
+                "timeout": 10,
+                "runtime": "Nodejs18.15",
+                "memorySize": 256,
+                "envVariables": {
+                  "NODE_ENV": "production",
+                  "DEVELOPMENT_PAYMENTS_ENABLED": "false",
+                  "WECHAT_PAYMENT_CREATE_URL": "{{env.WECHAT_PAYMENT_CREATE_URL}}",
+                  "WECHAT_PAYMENT_API_TOKEN": "{{env.WECHAT_PAYMENT_API_TOKEN}}"
+                }
+              }
+            },
+            {
+              "name": "auto-complete-lessons",
+              "config": {
+                "timeout": 60,
+                "runtime": "Nodejs18.15",
+                "memorySize": 256,
+                "envVariables": {
+                  "NODE_ENV": "production",
+                  "DEVELOPMENT_PAYMENTS_ENABLED": "false"
+                }
+              },
+              "triggers": [
+                {
+                  "name": "complete-overdue-lessons-hourly",
+                  "type": "timer",
+                  "config": "0 0 * * * * *"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
