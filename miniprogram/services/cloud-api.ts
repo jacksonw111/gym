@@ -360,10 +360,19 @@ export class CloudApi implements GymApi {
     requestId = mutationRequestId(),
   ): Promise<TData> {
     const request: ApiRequest<TPayload> = { action, requestId, payload }
-    const response = await getWechat().cloud.callFunction({
-      name: 'gym-api',
-      data: request,
-    })
+    let response: { result?: unknown }
+    try {
+      response = await getWechat().cloud.callFunction({
+        name: 'gym-api',
+        data: request,
+      })
+    } catch (error) {
+      const errMsg =
+        error && typeof error === 'object' && 'errMsg' in error && typeof error.errMsg === 'string'
+          ? error.errMsg
+          : '云函数调用失败，请检查云环境与函数配置'
+      throw new Error(errMsg)
+    }
     const result = response.result as ApiResponse<TData>
     if (!result.ok) {
       throw new Error(result.error.message)

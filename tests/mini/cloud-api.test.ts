@@ -99,6 +99,19 @@ afterEach(() => {
 })
 
 describe('production CloudApi adapter', () => {
+  it('preserves the real WeChat cloud error message when the request never reaches the function', async () => {
+    installWechat(async () => {
+      throw {
+        errCode: -501005,
+        errMsg: 'cloud.callFunction:fail function not found',
+      }
+    })
+
+    await expect(new CloudApi().getSession()).rejects.toThrow(
+      'cloud.callFunction:fail function not found',
+    )
+  })
+
   it('reads activeRole and sends it on subsequent bootstrap requests', async () => {
     const { cloudCall } = installWechat(async () =>
       ok(
