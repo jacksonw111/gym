@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { getCloudInitializationOptions, resolveEnvironment } from '../../miniprogram/config/env'
+import {
+  getCloudInitializationOptions,
+  getEnvironment,
+  resolveEnvironment,
+} from '../../miniprogram/config/env'
 import {
   applyBulkAvailability,
   buildDefaultSchedule,
@@ -54,6 +58,28 @@ const bookedLesson = (id: string, startsAt: string, coachId = 'coach-a'): Lesson
 })
 
 describe('mini program environment protection', () => {
+  it('connects the app to the configured CloudBase environment', () => {
+    const root = globalThis as unknown as {
+      wx?: { getAccountInfoSync(): { miniProgram: { envVersion: string } } }
+    }
+    const previousWx = root.wx
+    root.wx = {
+      getAccountInfoSync: () => ({ miniProgram: { envVersion: 'develop' } }),
+    }
+
+    try {
+      const environment = getEnvironment()
+      expect(environment.cloudEnvId).toBe('cloud1-d1gmh1lu77f6e8c06')
+      expect(environment.useDefaultCloudEnvironment).toBe(false)
+      expect(getCloudInitializationOptions(environment)).toEqual({
+        traceUser: true,
+        env: 'cloud1-d1gmh1lu77f6e8c06',
+      })
+    } finally {
+      root.wx = previousWx
+    }
+  })
+
   it('uses the real cloud backend by default in development', () => {
     expect(
       resolveEnvironment({

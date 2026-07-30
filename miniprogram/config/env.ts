@@ -40,8 +40,8 @@ export const getCloudInitializationOptions = (
   ...(environment.cloudEnvId?.trim() ? { env: environment.cloudEnvId.trim() } : {}),
 })
 
-const CLOUD_ENV_ID: string | undefined = undefined
-const USE_DEFAULT_CLOUD_ENVIRONMENT = true
+const CLOUD_ENV_ID = 'cloud1-d1gmh1lu77f6e8c06'
+const USE_DEFAULT_CLOUD_ENVIRONMENT = false
 const USE_LOCAL_DEVELOPMENT_DATA = false
 
 export const getEnvironment = (): EnvironmentConfig => {
