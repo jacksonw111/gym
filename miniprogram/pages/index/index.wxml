@@ -1,0 +1,38 @@
+<navigation-bar
+  title="拼饭"
+  back="{{false}}"
+  color="#1f2329"
+  background="#ffffff"
+ />
+<scroll-view class="page" scroll-y type="list">
+  <view class="hero">
+    <view class="hero__icon">
+      <van-icon name="friends-o" size="52" color="#ee5a24" />
+    </view>
+    <view class="hero__title">基础工程已就绪</view>
+    <view class="hero__description">Skyline、glass-easel 与 Vant Weapp 已完成接入</view>
+    <van-tag color="#fff1eb" text-color="#ee5a24" round>Vant Weapp 1.11.7</van-tag>
+  </view>
+  <van-cell-group inset title="运行环境">
+    <van-cell title="渲染引擎" value="Skyline" icon="desktop-o" />
+    <van-cell title="组件框架" value="glass-easel" icon="cluster-o" />
+    <van-cell title="开发语言" value="TypeScript + Less" icon="notes-o" />
+  </van-cell-group>
+  <view class="actions">
+    <van-button type="primary" block round bind:click="openPopup">验证交互组件</van-button>
+  </view>
+</scroll-view>
+<van-popup
+  show="{{showPopup}}"
+  round
+  position="bottom"
+  safe-area-inset-bottom
+  bind:close="closePopup"
+>
+  <view class="popup">
+    <van-icon name="checked" size="44" color="#07c160" />
+    <view class="popup__title">交互正常</view>
+    <view class="popup__description">Vant 弹层能够在 Skyline 下打开和关闭</view>
+    <van-button block round bind:click="closePopup">关闭</van-button>
+  </view>
+</van-popup>

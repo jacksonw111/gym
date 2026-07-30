@@ -1,0 +1,26 @@
+{
+  "name": "group-meal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "拼饭微信小程序",
+  "scripts": {
+    "format": "biome format --write . && prettier --write \"miniprogram/**/*.{wxml,less}\"",
+    "lint": "biome lint . && stylelint \"miniprogram/**/*.less\"",
+    "typecheck": "tsc --noEmit",
+    "check": "biome check . && prettier --check \"miniprogram/**/*.{wxml,less}\" && stylelint \"miniprogram/**/*.less\" && tsc --noEmit"
+  },
+  "dependencies": {
+    "@vant/weapp": "1.11.7"
+  },
+  "devDependencies": {
+    "@babel/generator": "7.28.3",
+    "@babel/parser": "7.28.3",
+    "@biomejs/biome": "2.5.6",
+    "miniprogram-api-typings": "5.2.2",
+    "prettier": "3.9.6",
+    "prettier-plugin-mp": "2.5.0",
+    "stylelint": "17.14.1",
+    "stylelint-config-standard-less": "4.1.0",
+    "typescript": "7.0.2"
+  }
+}
