@@ -5,6 +5,8 @@
       "miniprogram/**/*.ts",
       "tests/**/*.ts",
       "cloudfunctions/**/*.ts",
+      "admin/**/*.ts",
+      "admin/**/*.tsx",
       "typings/**/*.d.ts",
       "vitest.config.ts",
       "*.json",
