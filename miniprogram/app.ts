@@ -11,7 +11,7 @@ App({
 
     if (!environment.useLocalData) {
       wx.cloud.init(getCloudInitializationOptions(environment))
-      registerApi(new CloudApi())
+      registerApi(new CloudApi(environment.testPaymentEnabled))
       return
     }
 

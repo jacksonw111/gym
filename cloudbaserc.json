@@ -163,7 +163,8 @@
                 "memorySize": 256,
                 "envVariables": {
                   "NODE_ENV": "production",
-                  "DEVELOPMENT_PAYMENTS_ENABLED": "false",
+                  "GYM_PRODUCTION": "{{env.GYM_PRODUCTION}}",
+                  "DEVELOPMENT_PAYMENTS_ENABLED": "{{env.DEVELOPMENT_PAYMENTS_ENABLED}}",
                   "WECHAT_PAYMENT_CREATE_URL": "{{env.WECHAT_PAYMENT_CREATE_URL}}",
                   "WECHAT_PAYMENT_API_TOKEN": "{{env.WECHAT_PAYMENT_API_TOKEN}}",
                   "INTERNAL_SCHEDULER_TOKEN": "{{env.INTERNAL_SCHEDULER_TOKEN}}"

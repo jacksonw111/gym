@@ -590,6 +590,37 @@ describe('CloudBase action router', () => {
     expect(response).toMatchObject({ ok: false, error: { code: 'UNAUTHORIZED' } })
   })
 
+  it('returns a test-payment order and settles it only when development payment is enabled', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: true,
+      production: false,
+    })
+
+    const purchase = await router({
+      action: 'purchase',
+      requestId: 'test-cloud-purchase',
+      payload: { productId: 'product-1', coachId: 'coach-1' },
+      identity: { openId: 'dev-member-openid' },
+    })
+    expect(purchase).toMatchObject({
+      ok: true,
+      data: { order: { status: 'pending' }, testPayment: true },
+    })
+
+    const orderId =
+      purchase.ok && purchase.data && typeof purchase.data === 'object' && 'order' in purchase.data
+        ? (purchase.data.order as { id: string }).id
+        : ''
+    const paid = await router({
+      action: 'createDevPayment',
+      requestId: 'settle-test-cloud-purchase',
+      payload: { orderId },
+      identity: { openId: 'dev-member-openid' },
+    })
+    expect(paid).toMatchObject({ ok: true, data: { memberId: 'member-1' } })
+  })
+
   it('未知运行时错误只返回通用中文并记录服务端详情', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)

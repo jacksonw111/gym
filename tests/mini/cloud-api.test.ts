@@ -278,6 +278,38 @@ describe('production CloudApi adapter', () => {
     )
   })
 
+  it('settles an explicit cloud test purchase without opening WeChat Pay', async () => {
+    const { cloudCall, requestPayment } = installWechat(async ({ data }) => {
+      if (data.action === 'purchase') {
+        return ok({ order: { id: 'order-test' }, testPayment: true })
+      }
+      if (data.action === 'createDevPayment') {
+        return ok({ memberId: 'member-1' })
+      }
+      return ok(
+        bootstrap({
+          memberships: [membership('membership-test')],
+          orders: [{ id: 'order-test', status: 'paid', membershipId: 'membership-test' }],
+        }),
+      )
+    })
+
+    const result = await new CloudApi(true).purchasePackage({
+      productId: 'product-1',
+      coachId: 'coach-1',
+      requestId: 'purchase-test-request',
+    })
+
+    expect(result).toEqual({
+      status: 'paid',
+      membership: expect.objectContaining({ id: 'membership-test' }),
+    })
+    expect(requestPayment).not.toHaveBeenCalled()
+    expect(cloudCall.mock.calls.some(([input]) => input.data.action === 'createDevPayment')).toBe(
+      true,
+    )
+  })
+
   it('keeps a pending order and rechecks it without creating or paying again', async () => {
     let paid = false
     const { cloudCall, requestPayment } = installWechat(async ({ data }) => {

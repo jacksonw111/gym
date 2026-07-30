@@ -51,7 +51,8 @@ interface PurchaseResponse {
   order: {
     id: string
   }
-  payment: PaymentParameters
+  payment?: PaymentParameters
+  testPayment?: true
 }
 
 type BootstrapLesson = Lesson & {
@@ -106,6 +107,8 @@ const statusText = {
 
 export class CloudApi implements GymApi {
   private activeRole?: UserRole
+
+  constructor(private readonly testPaymentEnabled = false) {}
 
   async getSession(): Promise<SessionView> {
     const data = await this.bootstrap()
@@ -172,10 +175,25 @@ export class CloudApi implements GymApi {
       input.requestId,
     )
 
+    if (purchase.testPayment) {
+      if (!this.testPaymentEnabled) {
+        throw new Error('当前版本不允许测试支付')
+      }
+      await this.call('createDevPayment', { orderId: purchase.order.id }, input.requestId)
+      return this.queryPurchase({
+        orderId: purchase.order.id,
+        requestId: input.requestId,
+      })
+    }
+    if (!purchase.payment) {
+      throw new Error('支付参数缺失')
+    }
+    const payment = purchase.payment
+
     try {
       await new Promise<void>((resolve, reject) => {
         getWechat().requestPayment({
-          ...purchase.payment,
+          ...payment,
           success: () => resolve(),
           fail: (error) => reject(error),
         })

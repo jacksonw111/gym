@@ -73,6 +73,8 @@ describe('mini program environment protection', () => {
       const environment = getEnvironment()
       expect(environment.cloudEnvId).toBe('cloud1-d1gmh1lu77f6e8c06')
       expect(environment.useDefaultCloudEnvironment).toBe(false)
+      expect(environment.useLocalData).toBe(false)
+      expect(environment.testPaymentEnabled).toBe(true)
       expect(getCloudInitializationOptions(environment)).toEqual({
         traceUser: true,
         env: 'cloud1-d1gmh1lu77f6e8c06',

@@ -43,6 +43,7 @@ export const getCloudInitializationOptions = (
 const CLOUD_ENV_ID = 'cloud1-d1gmh1lu77f6e8c06'
 const USE_DEFAULT_CLOUD_ENVIRONMENT = false
 const USE_LOCAL_DEVELOPMENT_DATA = false
+const ENABLE_TEST_PAYMENT_IN_NON_RELEASE_BUILDS = true
 
 export const getEnvironment = (): EnvironmentConfig => {
   const wechat = globalThis as unknown as {
@@ -56,6 +57,6 @@ export const getEnvironment = (): EnvironmentConfig => {
     cloudEnvId: CLOUD_ENV_ID,
     useDefaultCloudEnvironment: USE_DEFAULT_CLOUD_ENVIRONMENT,
     useLocalData: mode === 'development' && USE_LOCAL_DEVELOPMENT_DATA,
-    testPaymentEnabled: mode === 'development' && USE_LOCAL_DEVELOPMENT_DATA,
+    testPaymentEnabled: mode === 'development' && ENABLE_TEST_PAYMENT_IN_NON_RELEASE_BUILDS,
   })
 }

@@ -455,6 +455,9 @@ export const createRouter = (
             createdAt: now,
           })
           if (!environment.createPaymentParameters) {
+            if (!environment.production && environment.developmentPaymentsEnabled) {
+              return { ok: true, data: { order, testPayment: true } }
+            }
             throw new Error('微信支付服务尚未配置')
           }
           const paymentOrder = await environment.createPaymentParameters(order)
@@ -748,7 +751,7 @@ export const main = async (event: ApiRequest): Promise<ApiResponse> => {
     store,
     {
       developmentPaymentsEnabled: process.env.DEVELOPMENT_PAYMENTS_ENABLED === 'true',
-      production: process.env.NODE_ENV === 'production',
+      production: process.env.GYM_PRODUCTION !== 'false',
       createPaymentParameters:
         paymentEndpoint && paymentApiToken
           ? createWechatPaymentProvider({
