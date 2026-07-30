@@ -29,6 +29,16 @@ describe('CloudBase部署构建', () => {
           cwd: directory,
           stdio: 'pipe',
         })
+        const devtoolsEntry = join(directory, 'index.js')
+        const exported = execFileSync(
+          process.execPath,
+          ['-e', `console.log(typeof require(${JSON.stringify(devtoolsEntry)}).main)`],
+          {
+            cwd: directory,
+            encoding: 'utf8',
+          },
+        )
+        expect(exported.trim()).toBe('function')
       }
 
       const autoSource = readFileSync(
