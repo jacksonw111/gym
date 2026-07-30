@@ -4,7 +4,7 @@
 
 ## 已实现的业务
 
-- 新用户首次打开小程序后，按真实微信身份自动建立会员档案。
+- 新用户可以先浏览课包和教练。只有点击购买，或在“我的”里点击登录后，才会依次授权头像、昵称和手机号并建立会员档案。
 - 未购课用户查看课包与可选教练；支付成功后，课包与所选教练绑定。
 - 会员查看教练课程表和已占用时段，按固定一小时预约。
 - 会员可在开课两小时前自行取消并退回课时；不足两小时需联系教练处理。
@@ -31,7 +31,21 @@ npm install
 cp .env.example .env.local
 ```
 
-把 `.env.local` 中两个环境编号填写为同一个 CloudBase 环境。部署前还需要填写定时任务口令和微信支付服务地址、口令。
+把 `.env.local` 中两个环境编号填写为同一个 CloudBase 环境。当前测试环境可设置：
+
+```dotenv
+GYM_PRODUCTION=false
+DEVELOPMENT_PAYMENTS_ENABLED=true
+```
+
+这样小程序仍使用真实云函数和数据库，但购买流程不会发起真实扣款。迁移到正式环境时改为：
+
+```dotenv
+GYM_PRODUCTION=true
+DEVELOPMENT_PAYMENTS_ENABLED=false
+```
+
+正式部署还需要填写定时任务口令和微信支付服务地址、口令。
 
 在当前终端载入配置后，可以检查生产配置：
 
@@ -64,7 +78,7 @@ node scripts/hash-admin-password.mjs "你的管理员密码"
 
 ## 创建真实会员和教练
 
-1. 用户先打开一次小程序，系统会使用他的微信身份自动建立会员档案。
+1. 用户在小程序“我的”页面点击“微信授权登录”，依次选择头像、填写昵称并授权手机号。
 2. 管理员登录运营后台，在“教练管理”中新增教练。
 3. 从“关联小程序用户”中选择该会员并保存。系统会给这个真实用户增加教练身份。
 4. 用户重新进入小程序后，即可切换到教练端设置开放时段。
@@ -83,6 +97,9 @@ npm run cloud:build
 
 # 构建运营后台
 VITE_CLOUDBASE_ENV_ID=你的环境编号 npm run admin:build
+
+# 本地打开后台，并直接连接 .env.local 指定的测试云环境
+npm run admin:dev
 ```
 
 按本项目的完整交付检查：
@@ -97,12 +114,45 @@ VITE_CLOUDBASE_ENV_ID=你的环境编号 npm run verify
 2. 确认 `project.config.json` 中的 AppID 是普瑞健身实际使用的小程序 AppID。
 3. 确认小程序已关联目标 CloudBase 环境。
 4. 选择“工具 → 构建 npm”，完成后编译。
+5. 使用真机测试头像、昵称和手机号授权；手机号能力可能有单独的体验额度或计费要求，请先在微信公众平台确认额度。
 
 `miniprogram/miniprogram_npm/` 是生成目录，不提交到 Git。
 
 ## 云端部署
 
-`cloudbaserc.json` 已声明数据库集合、索引、三个云函数、运营后台静态站点和每小时自动结课任务。部署前先载入 `.env.local`，运行生产配置检查和完整交付检查，再使用 CloudBase 工具按该配置部署。
+`cloudbaserc.json` 已声明数据库集合、索引、三个云函数、运营后台静态站点和每小时自动结课任务。
+
+首次部署前，在 CloudBase 控制台完成以下设置：
+
+1. 在“身份认证 / 登录方式”中启用匿名登录，让网页后台可以调用云函数。匿名身份不能绕过后台账号密码。
+2. 开通静态网站托管。
+3. 确认 `admins` 集合已经有可用管理员记录。
+4. 重新部署 `gym-api`，确保包含手机号授权所需的云端依赖。
+
+测试环境部署：
+
+```bash
+# 构建三个云函数和网页后台
+npm run cloud:build
+npm run admin:build
+
+# 载入当前环境配置
+set -a
+source .env.local
+set +a
+
+# 按 cloudbaserc.json 部署云函数、数据库配置和 /admin 静态站点
+npx @cloudbase/cli@3.7.0 framework deploy
+```
+
+部署成功后，后台地址是 CloudBase 静态网站默认域名加 `/admin/`。例如默认域名为 `https://example.tcloudbaseapp.com`，后台即为 `https://example.tcloudbaseapp.com/admin/`。
+
+迁移到正式环境不需要改业务代码：复制 `.env.example` 为正式环境配置，替换两个相同的环境编号、定时任务口令、支付服务地址和支付口令，并关闭测试支付即可。正式部署前运行：
+
+```bash
+npm run verify:production-config
+npm run verify
+```
 
 三个云函数分别负责：
 

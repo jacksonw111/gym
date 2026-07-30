@@ -23,4 +23,14 @@ if (process.env.VITE_ADMIN_DEVELOPMENT === 'true') {
   process.exit(1)
 }
 
+if (process.env.GYM_PRODUCTION !== 'true') {
+  console.error('生产环境必须设置 GYM_PRODUCTION=true')
+  process.exit(1)
+}
+
+if (process.env.DEVELOPMENT_PAYMENTS_ENABLED === 'true') {
+  console.error('生产环境禁止启用测试支付')
+  process.exit(1)
+}
+
 console.log('生产环境配置检查通过')
