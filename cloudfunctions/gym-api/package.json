@@ -4,11 +4,12 @@
   "private": true,
   "main": "dist/index.js",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/index.js --external:@cloudbase/node-sdk",
-    "postinstall": "npm run build"
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/index.js --external:@cloudbase/node-sdk"
   },
   "dependencies": {
-    "@cloudbase/node-sdk": "3.18.3",
+    "@cloudbase/node-sdk": "3.18.3"
+  },
+  "devDependencies": {
     "esbuild": "0.28.1"
   }
 }

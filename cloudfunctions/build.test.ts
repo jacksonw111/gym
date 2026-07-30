@@ -15,11 +15,13 @@ describe('CloudBase部署构建', () => {
           main?: string
           scripts?: Record<string, string>
           dependencies?: Record<string, string>
+          devDependencies?: Record<string, string>
         }
         expect(packageJson.main).toBe('dist/index.js')
         expect(packageJson.scripts?.build).toContain('esbuild')
-        expect(packageJson.scripts?.postinstall).toBe('npm run build')
-        expect(packageJson.dependencies?.esbuild).toBe('0.28.1')
+        expect(packageJson.scripts?.postinstall).toBeUndefined()
+        expect(packageJson.dependencies?.esbuild).toBeUndefined()
+        expect(packageJson.devDependencies?.esbuild).toBe('0.28.1')
 
         execFileSync('npm', ['run', 'build'], { cwd: directory, stdio: 'pipe' })
         const entry = join(directory, 'dist', 'index.js')
