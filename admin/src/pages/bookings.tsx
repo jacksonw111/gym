@@ -26,6 +26,9 @@ export function BookingsPage({ data }: { data: AdminData }) {
       ),
     [coach, data.bookings, date, member, status],
   )
+  const linkedAppeals = selected
+    ? data.appeals.filter((appeal) => appeal.lessonId === selected.id)
+    : []
 
   return (
     <section>
@@ -167,10 +170,41 @@ export function BookingsPage({ data }: { data: AdminData }) {
                   <li key={`${entry.at}-${entry.operation}`}>
                     <time>{entry.at}</time>
                     <strong>{entry.operation}</strong>
-                    <span>{entry.delta > 0 ? `+${entry.delta}` : entry.delta}</span>
+                    <span>{entry.description}</span>
                   </li>
                 ))}
               </ol>
+              <h3>课程反馈</h3>
+              {selected.feedback ? (
+                <div className="statement">
+                  <strong>
+                    {'★'.repeat(selected.feedback.rating ?? 0)} {selected.feedback.comment}
+                  </strong>
+                  <span>{selected.feedback.submittedAt}</span>
+                </div>
+              ) : (
+                <p className="empty-state">暂无课程反馈。</p>
+              )}
+              <h3>关联申诉</h3>
+              {linkedAppeals.length > 0 ? (
+                <div className="schedule-list">
+                  {linkedAppeals.map((appeal) => (
+                    <article key={appeal.id}>
+                      <strong>
+                        {appeal.id.replace('appeal-', 'A-')} ·{' '}
+                        {appeal.status === 'pending'
+                          ? '待处理'
+                          : appeal.status === 'approved'
+                            ? '已通过'
+                            : '已驳回'}
+                      </strong>
+                      <span>{appeal.reason}</span>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">该课程没有关联申诉。</p>
+              )}
             </>
           ) : (
             <p className="empty-state">选择一条预约查看状态变化与课时流水。</p>

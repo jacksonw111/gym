@@ -123,12 +123,31 @@ export function AppealsPage({
                     已扣 1 节 · <strong>当前可用 {membership?.available ?? 0} 节</strong>
                   </dd>
                 </div>
+                <div>
+                  <dt>完成 / 取消来源</dt>
+                  <dd>{selected.source}</dd>
+                </div>
               </dl>
               <section className="statement">
                 <span>申诉原因</span>
                 <strong>{selected.reason}</strong>
                 <p>{selected.note}</p>
               </section>
+              <h3>完整课时变化</h3>
+              {selected.balanceChanges.length > 0 ? (
+                <ol className="event-list ledger">
+                  {selected.balanceChanges.map((change) => (
+                    <li key={change.id}>
+                      <time>{change.at}</time>
+                      <strong>
+                        {change.operation} · {change.description}
+                      </strong>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="empty-state">暂无课时变化记录。</p>
+              )}
               {selected.status === 'pending' ? (
                 <div className="decision-area">
                   <label>

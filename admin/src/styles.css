@@ -1136,6 +1136,33 @@ tbody tr:hover,
   color: oklch(82% 0.015 78);
 }
 
+.balance-change-list {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.55rem;
+}
+
+.balance-change-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  color: var(--paper);
+  background: oklch(29% 0.018 70);
+}
+
+.balance-change-list article div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.balance-change-list article time,
+.balance-change-list article p {
+  margin: 0;
+  color: oklch(70% 0.015 78);
+  font-size: 0.72rem;
+}
+
 .profile-grid {
   display: grid;
   gap: 2rem 3rem;

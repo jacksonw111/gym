@@ -214,11 +214,15 @@ export function CoachesPage({
                   <dd>{selected.phone}</dd>
                 </div>
                 <div>
+                  <dt>账号身份</dt>
+                  <dd>教练账号 · {selected.userId}</dd>
+                </div>
+                <div>
                   <dt>近期排班</dt>
                   <dd>{selected.schedule.length} 节</dd>
                 </div>
               </dl>
-              <h3>排班与课程</h3>
+              <h3>近期排班</h3>
               <div className="schedule-list">
                 {selected.schedule.length === 0 && (
                   <p className="empty-state">近期没有安排课程。</p>
@@ -231,6 +235,17 @@ export function CoachesPage({
                     </time>
                     <span>
                       {slot.member} · {slot.course}
+                    </span>
+                  </article>
+                ))}
+              </div>
+              <h3>历史课程</h3>
+              <div className="schedule-list">
+                {selected.history.length === 0 && <p className="empty-state">暂无历史课程记录。</p>}
+                {selected.history.map((course) => (
+                  <article key={`${course.date}-${course.member}-${course.status}`}>
+                    <span>
+                      {course.date} · {course.member} · {course.status}
                     </span>
                   </article>
                 ))}

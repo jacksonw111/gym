@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { AdminApi, AdminData, Member } from '../api'
+import type { AdminApi, AdminData, BalanceChange, Member, MembershipPackage } from '../api'
 
 const money = (value: number) =>
   new Intl.NumberFormat('zh-CN', {
@@ -7,6 +7,18 @@ const money = (value: number) =>
     currency: 'CNY',
     maximumFractionDigits: 0,
   }).format(value)
+
+const changeDescription = (change: BalanceChange) =>
+  [
+    change.availableDelta
+      ? `可用 ${change.availableDelta > 0 ? '+' : ''}${change.availableDelta}`
+      : '',
+    change.lockedDelta ? `锁定 ${change.lockedDelta > 0 ? '+' : ''}${change.lockedDelta}` : '',
+    change.usedDelta ? `已用 ${change.usedDelta > 0 ? '+' : ''}${change.usedDelta}` : '',
+    change.totalDelta ? `总课时 ${change.totalDelta > 0 ? '+' : ''}${change.totalDelta}` : '',
+  ]
+    .filter(Boolean)
+    .join(' / ')
 
 export function MembersPage({
   api,
@@ -19,10 +31,11 @@ export function MembersPage({
 }) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [delta, setDelta] = useState('')
-  const [reason, setReason] = useState('')
+  const [adjustments, setAdjustments] = useState<Record<string, { delta: string; reason: string }>>(
+    {},
+  )
   const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const selected = data.members.find((member) => member.id === selectedId)
   const filtered = useMemo(
     () =>
@@ -32,28 +45,32 @@ export function MembersPage({
     [data.members, search],
   )
 
-  const adjust = async (member: Member) => {
-    setError('')
+  const adjust = async (member: Member, membership: MembershipPackage) => {
+    const adjustment = adjustments[membership.id] ?? { delta: '', reason: '' }
+    setErrors((current) => ({ ...current, [membership.id]: '' }))
     setMessage('')
-    const value = Number(delta)
+    const value = Number(adjustment.delta)
     if (!Number.isInteger(value) || value === 0) {
-      setError('课时必须是非 0 整数')
+      setErrors((current) => ({ ...current, [membership.id]: '课时必须是非 0 整数' }))
       return
     }
-    if (!reason.trim()) {
-      setError('请填写调整原因')
+    if (!adjustment.reason.trim()) {
+      setErrors((current) => ({ ...current, [membership.id]: '请填写调整原因' }))
       return
     }
-    const membership = member.packages[0]
-    if (!membership) return
     try {
-      await api.adjustPackage(membership.id, value, reason.trim())
+      await api.adjustPackage(membership.id, value, adjustment.reason.trim())
       await refresh()
-      setDelta('')
-      setReason('')
+      setAdjustments((current) => ({
+        ...current,
+        [membership.id]: { delta: '', reason: '' },
+      }))
       setMessage(`已为${member.name}${value > 0 ? '增加' : '减少'} ${Math.abs(value)} 节课`)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : '调整失败')
+      setErrors((current) => ({
+        ...current,
+        [membership.id]: caught instanceof Error ? caught.message : '调整失败',
+      }))
     }
   }
 
@@ -88,64 +105,93 @@ export function MembersPage({
               <h2>课包与教练绑定</h2>
             </div>
           </div>
-          {selected.packages.map((membership) => (
-            <div className="balance-layout" key={membership.id}>
-              <div className="balance-summary">
-                <strong>{membership.productName}</strong>
-                <span>
-                  绑定教练 {membership.coachName} · 购于 {membership.purchasedAt}
-                </span>
-                <div className="balance-counts">
-                  <div className="available">
-                    <strong>{membership.available}</strong>
-                    <span>available / 可用</span>
-                  </div>
-                  <div className="locked">
-                    <strong>{membership.locked}</strong>
-                    <span>locked / 锁定</span>
-                  </div>
-                  <div className="used">
-                    <strong>{membership.used}</strong>
-                    <span>used / 已用</span>
+          {selected.packages.map((membership) => {
+            const adjustment = adjustments[membership.id] ?? { delta: '', reason: '' }
+            const error = errors[membership.id]
+
+            return (
+              <div className="balance-layout" key={membership.id}>
+                <div className="balance-summary">
+                  <strong>{membership.productName}</strong>
+                  <span>
+                    绑定教练 {membership.coachName} · 购于 {membership.purchasedAt}
+                  </span>
+                  <div className="balance-counts">
+                    <div className="available">
+                      <strong>{membership.available}</strong>
+                      <span>available / 可用</span>
+                    </div>
+                    <div className="locked">
+                      <strong>{membership.locked}</strong>
+                      <span>locked / 锁定</span>
+                    </div>
+                    <div className="used">
+                      <strong>{membership.used}</strong>
+                      <span>used / 已用</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="adjust-form">
-                <p className="eyebrow">MANUAL ADJUSTMENT</p>
-                <h3>人工增减课时</h3>
-                <label>
-                  调整课时
-                  <input
-                    inputMode="numeric"
-                    placeholder="如 2 或 -1"
-                    value={delta}
-                    onChange={(event) => setDelta(event.target.value)}
-                  />
-                </label>
-                <label>
-                  调整原因
-                  <textarea
-                    rows={3}
-                    placeholder="说明线下补课、误扣修正等原因"
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                  />
-                </label>
-                {error && (
-                  <p className="form-message error" role="alert">
-                    {error}
-                  </p>
+                <div className="adjust-form">
+                  <p className="eyebrow">MANUAL ADJUSTMENT</p>
+                  <h3>人工增减课时</h3>
+                  <label>
+                    调整课时
+                    <input
+                      inputMode="numeric"
+                      placeholder="如 2 或 -1"
+                      value={adjustment.delta}
+                      onChange={(event) =>
+                        setAdjustments((current) => ({
+                          ...current,
+                          [membership.id]: { ...adjustment, delta: event.target.value },
+                        }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    调整原因
+                    <textarea
+                      rows={3}
+                      placeholder="说明线下补课、误扣修正等原因"
+                      value={adjustment.reason}
+                      onChange={(event) =>
+                        setAdjustments((current) => ({
+                          ...current,
+                          [membership.id]: { ...adjustment, reason: event.target.value },
+                        }))
+                      }
+                    />
+                  </label>
+                  {error && (
+                    <p className="form-message error" role="alert">
+                      {error}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => void adjust(selected, membership)}
+                  >
+                    确认调整
+                  </button>
+                </div>
+                {membership.changes.length > 0 && (
+                  <div className="balance-change-list">
+                    <h3>余额变更记录</h3>
+                    {membership.changes.map((change) => (
+                      <article key={change.id}>
+                        <div>
+                          <strong>{change.note}</strong>
+                          <time>{change.createdAt}</time>
+                        </div>
+                        <p>{changeDescription(change)}</p>
+                      </article>
+                    ))}
+                  </div>
                 )}
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => void adjust(selected)}
-                >
-                  确认调整
-                </button>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </section>
         <div className="profile-grid">
           <section className="section-block">

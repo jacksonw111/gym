@@ -3,7 +3,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resetDevelopmentData } from './api/development'
+import { developmentApi, resetDevelopmentData } from './api/development'
 import { App } from './app'
 import './test/setup'
 
@@ -131,5 +131,90 @@ describe('后台管理流程', () => {
     expect(screen.getByText('当前可用 7 节')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '驳回申诉' })).not.toBeInTheDocument()
     expect(screen.getByText('处理后记录只读')).toBeInTheDocument()
+  })
+
+  it('多课包会员只调整点击的第二份课包', async () => {
+    const data = await developmentApi.loadData()
+    const member = data.members[0]
+    member?.packages.push({
+      id: 'package-chen-trial',
+      productName: '4 节体验课包',
+      coachId: 'coach-zhoulan',
+      coachName: '周岚',
+      available: 4,
+      locked: 0,
+      used: 0,
+      total: 4,
+      purchasedAt: '2026-07-28',
+      changes: [],
+    })
+    localStorage.setItem('purui-admin-data', JSON.stringify(data))
+    const user = await login()
+    await user.click(screen.getByRole('button', { name: '会员' }))
+    await user.click(screen.getByRole('button', { name: '查看陈澄' }))
+
+    const deltas = screen.getAllByLabelText('调整课时')
+    const reasons = screen.getAllByLabelText('调整原因')
+    const buttons = screen.getAllByRole('button', { name: '确认调整' })
+    const secondDelta = deltas[1]
+    const secondReason = reasons[1]
+    const secondButton = buttons[1]
+    if (!secondDelta || !secondReason || !secondButton) throw new Error('第二份课包表单缺失')
+    await user.type(secondDelta, '2')
+    await user.type(secondReason, '第二份课包线下补课')
+    await user.click(secondButton)
+
+    const after = await developmentApi.loadData()
+    expect(after.members[0]?.packages[0]).toMatchObject({ available: 6, total: 12 })
+    expect(after.members[0]?.packages[1]).toMatchObject({ available: 6, total: 6 })
+  })
+
+  it('会员详情显示人工调课原因和课时变化', async () => {
+    const user = await login()
+    await user.click(screen.getByRole('button', { name: '会员' }))
+    await user.click(screen.getByRole('button', { name: '查看陈澄' }))
+
+    await user.type(screen.getByLabelText('调整课时'), '2')
+    await user.type(screen.getByLabelText('调整原因'), '补偿停课')
+    await user.click(screen.getByRole('button', { name: '确认调整' }))
+
+    expect(await screen.findByText('补偿停课')).toBeInTheDocument()
+    expect(screen.getByText('可用 +2 / 总课时 +2')).toBeInTheDocument()
+  })
+
+  it('教练详情显示账号身份和历史课程', async () => {
+    const user = await login()
+    await user.click(screen.getByRole('button', { name: '教练' }))
+
+    expect(screen.getByText('教练账号 · coach-user-linxiao')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '历史课程' })).toBeInTheDocument()
+    expect(screen.getByText('2026-07-26 · 陈澄 · 教练取消（已扣课）')).toBeInTheDocument()
+  })
+
+  it('预约详情显示课程反馈和关联申诉', async () => {
+    const user = await login()
+    await user.click(screen.getByRole('button', { name: '预约' }))
+
+    const completed = screen.getByRole('row', { name: /陈澄.*已完成/ })
+    await user.click(within(completed).getByRole('button', { name: '详情 →' }))
+    expect(screen.getByRole('heading', { name: '课程反馈' })).toBeInTheDocument()
+    expect(screen.getByText('★★★★★ 动作纠正很细致。')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('预约状态'), 'coach_cancelled_consumed')
+    const appealed = screen.getByRole('row', { name: /陈澄.*教练取消/ })
+    await user.click(within(appealed).getByRole('button', { name: '详情 →' }))
+    expect(screen.getByRole('heading', { name: '关联申诉' })).toBeInTheDocument()
+    expect(screen.getByText('A-240730 · 待处理')).toBeInTheDocument()
+  })
+
+  it('申诉详情显示取消来源和完整课时变化', async () => {
+    const user = await login()
+    await user.click(screen.getByRole('button', { name: '申诉' }))
+    await user.click(screen.getByRole('button', { name: '查看申诉 A-240730' }))
+
+    expect(screen.getByText('教练取消 · 已扣课')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '完整课时变化' })).toBeInTheDocument()
+    expect(screen.getByText('锁定课时 · 可用 -1 / 锁定 +1')).toBeInTheDocument()
+    expect(screen.getByText('核销课时 · 锁定 -1 / 已用 +1')).toBeInTheDocument()
   })
 })
