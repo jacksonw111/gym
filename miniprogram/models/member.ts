@@ -53,6 +53,7 @@ interface SlotInput {
   startsAt: string
   endsAt: string
   open: boolean
+  occupied?: boolean
   lesson?: Lesson
   memberName?: string
   viewerMemberId: string
@@ -73,6 +74,9 @@ export const buildPublicSlot = (slot: SlotInput): PublicSlot => {
     const mine = slot.lesson.memberId === slot.viewerMemberId
     status = mine ? 'mine' : 'occupied'
     label = mine ? '我的预约' : '已预约'
+  } else if (slot.occupied) {
+    status = 'occupied'
+    label = '已预约'
   }
 
   return {

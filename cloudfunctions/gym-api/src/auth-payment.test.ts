@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { assertCanAccessLesson } from './auth'
 import { createOrder } from './packages'
-import { createDevPayment, createWechatPaymentProvider, processWechatPayment } from './payment'
+import {
+  createDevPayment,
+  createPaymentNotificationHandler,
+  createWechatPaymentProvider,
+} from './payment'
 import { type Coach, type Lesson, MemoryStore, type Product, type User } from './store'
 
 const lesson: Lesson = {
@@ -63,32 +67,56 @@ describe('支付边界', () => {
     ).rejects.toThrow('未开启')
   })
 
-  it('生产订单只有验证过的微信支付服务端通知才能发放', async () => {
+  it('未经受信验证器确认的支付通知不能发放课包', async () => {
     const store = new MemoryStore({ users: [member], coaches: [coach], products: [product] })
-    const order = await createOrder(store, {
+    await createOrder(store, {
       id: 'order-1',
+      requestId: 'purchase-1',
       memberId: member.id,
       coachId: coach.id,
       productId: product.id,
       createdAt: '2026-07-30T00:00:00.000Z',
     })
 
-    await expect(
-      processWechatPayment(store, {
-        orderId: order.id,
-        paymentId: 'payment-1',
-        paidAt: '2026-07-30T00:01:00.000Z',
-        verifiedServerNotification: false,
-      }),
-    ).rejects.toThrow('验证')
+    const handler = createPaymentNotificationHandler(store, {
+      verify: async () => {
+        throw new Error('平台签名验证失败')
+      },
+    })
+
+    await expect(handler({ headers: {}, body: '{}' })).rejects.toThrow('验证失败')
     expect(store.packages).toHaveLength(0)
 
-    await processWechatPayment(store, {
-      orderId: order.id,
-      paymentId: 'payment-1',
-      paidAt: '2026-07-30T00:01:00.000Z',
-      verifiedServerNotification: true,
+    await expect(
+      createPaymentNotificationHandler(store)({ headers: {}, body: '{}' }),
+    ).rejects.toThrow('未配置')
+  })
+
+  it('受信验证后的重复支付通知只发放一次', async () => {
+    const store = new MemoryStore({ users: [member], coaches: [coach], products: [product] })
+    const order = await createOrder(store, {
+      id: 'order-verified',
+      requestId: 'purchase-verified',
+      memberId: member.id,
+      coachId: coach.id,
+      productId: product.id,
+      createdAt: '2026-07-30T00:00:00.000Z',
     })
+    const handler = createPaymentNotificationHandler(store, {
+      verify: async () => ({
+        orderId: order.id,
+        paymentId: 'payment-verified',
+        paidAt: '2026-07-30T00:01:00.000Z',
+      }),
+    })
+
+    const first = await handler({ headers: { 'wechatpay-signature': 'opaque' }, body: 'opaque' })
+    const repeated = await handler({
+      headers: { 'wechatpay-signature': 'opaque' },
+      body: 'opaque',
+    })
+
+    expect(repeated.id).toBe(first.id)
     expect(store.packages).toHaveLength(1)
   })
 
@@ -118,8 +146,10 @@ describe('支付边界', () => {
     )
     const order = {
       id: 'order-1',
+      requestId: 'purchase-1',
       memberId: member.id,
       coachId: coach.id,
+      coachName: coach.name,
       productId: product.id,
       productSnapshot: {
         id: product.id,

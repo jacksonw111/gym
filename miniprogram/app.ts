@@ -1,4 +1,4 @@
-import { getEnvironment } from './config/env'
+import { getCloudInitializationOptions, getEnvironment } from './config/env'
 import { registerApi } from './services/api'
 import { CloudApi } from './services/cloud-api'
 import { DevelopmentApi } from './services/development-api'
@@ -9,11 +9,8 @@ App({
   onLaunch() {
     const environment = getEnvironment()
 
-    if (environment.mode === 'production') {
-      wx.cloud.init({
-        env: environment.cloudEnvId,
-        traceUser: true,
-      })
+    if (!environment.useLocalData) {
+      wx.cloud.init(getCloudInitializationOptions(environment))
       registerApi(new CloudApi())
       return
     }

@@ -1,6 +1,7 @@
 import {
   appendLedger,
   assertPackageInvariant,
+  DomainError,
   type MembershipPackage,
   type Order,
   type Product,
@@ -11,6 +12,7 @@ export type PackageProduct = Product
 
 export interface CreateOrderInput {
   id?: string
+  requestId: string
   memberId: string
   coachId: string
   productId: string
@@ -19,17 +21,23 @@ export interface CreateOrderInput {
 
 export const createOrder = async (store: Store, input: CreateOrderInput): Promise<Order> =>
   store.transaction(() => {
+    const duplicate = store.orders.find(
+      (item) => item.memberId === input.memberId && item.requestId === input.requestId,
+    )
+    if (duplicate) return duplicate
     const member = store.users.find((item) => item.id === input.memberId)
     const coach = store.coaches.find((item) => item.id === input.coachId)
     const product = store.products.find((item) => item.id === input.productId)
-    if (!member?.roles.includes('member')) throw new Error('会员不存在')
-    if (coach?.status !== 'active') throw new Error('教练不可购买')
-    if (product?.status !== 'published') throw new Error('课包商品不可购买')
+    if (!member?.roles.includes('member')) throw new DomainError('会员不存在')
+    if (coach?.status !== 'active') throw new DomainError('教练不可购买')
+    if (product?.status !== 'published') throw new DomainError('课包商品不可购买')
 
     const order: Order = {
       id: input.id ?? store.nextId('order'),
+      requestId: input.requestId,
       memberId: input.memberId,
       coachId: input.coachId,
+      coachName: coach.name,
       productId: input.productId,
       productSnapshot: {
         id: product.id,
@@ -56,21 +64,22 @@ export const grantPaidOrder = async (
 ): Promise<MembershipPackage> =>
   store.transaction(() => {
     const order = store.orders.find((item) => item.id === input.orderId)
-    if (!order) throw new Error('订单不存在')
+    if (!order) throw new DomainError('订单不存在')
     if (order.status === 'paid' && order.packageId) {
       const existing = store.packages.find((item) => item.id === order.packageId)
-      if (!existing) throw new Error('订单课包不存在')
+      if (!existing) throw new DomainError('订单课包不存在')
       return existing
     }
     const duplicatePayment = store.orders.find(
       (item) => item.paymentId === input.paymentId && item.id !== order.id,
     )
-    if (duplicatePayment) throw new Error('支付单已处理')
+    if (duplicatePayment) throw new DomainError('支付单已处理')
 
     const membership: MembershipPackage = {
       id: store.nextId('package'),
       memberId: order.memberId,
       coachId: order.coachId,
+      coachName: order.coachName,
       productId: order.productSnapshot.id,
       productName: order.productSnapshot.name,
       purchasePriceCents: order.productSnapshot.priceCents,
@@ -112,15 +121,17 @@ export const adjustBalance = async (
   input: AdjustBalanceInput,
 ): Promise<MembershipPackage> =>
   store.transaction(() => {
-    if (!Number.isInteger(input.delta) || input.delta === 0) throw new Error('调整课时必须为整数')
-    if (!input.note.trim()) throw new Error('调整说明不能为空')
+    if (!Number.isInteger(input.delta) || input.delta === 0) {
+      throw new DomainError('调整课时必须为整数')
+    }
+    if (!input.note.trim()) throw new DomainError('调整说明不能为空')
     const duplicate = store.ledger.find(
       (item) => item.operation === 'manual_adjust' && item.note?.endsWith(`(${input.requestId})`),
     )
     const membership = store.packages.find((item) => item.id === input.packageId)
-    if (!membership) throw new Error('课包不存在')
+    if (!membership) throw new DomainError('课包不存在')
     if (duplicate) return membership
-    if (membership.availableLessons + input.delta < 0) throw new Error('可用课时不足')
+    if (membership.availableLessons + input.delta < 0) throw new DomainError('可用课时不足')
 
     membership.availableLessons += input.delta
     membership.totalLessons += input.delta

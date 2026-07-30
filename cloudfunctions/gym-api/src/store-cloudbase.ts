@@ -16,13 +16,15 @@ import type {
 
 interface CloudDocument {
   get(): Promise<{ data: unknown }>
-  set(input: { data: Record<string, unknown> }): Promise<unknown>
+  set(data: Record<string, unknown>): Promise<unknown>
   remove(): Promise<unknown>
 }
 
 interface CloudCollection {
   get(): Promise<{ data: unknown }>
   doc(id: string): CloudDocument
+  limit(pageSize: number): CloudCollection
+  skip(offset: number): CloudCollection
 }
 
 export interface CloudDatabase {
@@ -48,6 +50,23 @@ const recordsFromResult = (result: unknown): Array<Record<string, unknown>> => {
     })
 }
 
+const PAGE_SIZE = 100
+
+export const CLOUD_COLLECTIONS = {
+  users: 'users',
+  coaches: 'coaches',
+  products: 'products',
+  memberships: 'memberships',
+  orders: 'orders',
+  schedules: 'schedules',
+  lessons: 'lessons',
+  appeals: 'appeals',
+  ledger: 'ledger',
+  admins: 'admins',
+  adminSessions: 'adminSessions',
+  systemLocks: 'system_locks',
+} as const
+
 export class CloudBaseStore implements Store {
   users: User[] = []
   coaches: Coach[] = []
@@ -66,77 +85,77 @@ export class CloudBaseStore implements Store {
   private definitions(): CollectionDefinition[] {
     return [
       {
-        name: 'users',
+        name: CLOUD_COLLECTIONS.users,
         read: () => this.users,
         write: (records) => {
           this.users = records as User[]
         },
       },
       {
-        name: 'coaches',
+        name: CLOUD_COLLECTIONS.coaches,
         read: () => this.coaches,
         write: (records) => {
           this.coaches = records as Coach[]
         },
       },
       {
-        name: 'package_products',
+        name: CLOUD_COLLECTIONS.products,
         read: () => this.products,
         write: (records) => {
           this.products = records as Product[]
         },
       },
       {
-        name: 'membership_packages',
+        name: CLOUD_COLLECTIONS.memberships,
         read: () => this.packages,
         write: (records) => {
           this.packages = records as MembershipPackage[]
         },
       },
       {
-        name: 'orders',
+        name: CLOUD_COLLECTIONS.orders,
         read: () => this.orders,
         write: (records) => {
           this.orders = records as Order[]
         },
       },
       {
-        name: 'schedules',
+        name: CLOUD_COLLECTIONS.schedules,
         read: () => this.schedules,
         write: (records) => {
           this.schedules = records as ScheduleSlot[]
         },
       },
       {
-        name: 'lessons',
+        name: CLOUD_COLLECTIONS.lessons,
         read: () => this.lessons,
         write: (records) => {
           this.lessons = records as Lesson[]
         },
       },
       {
-        name: 'appeals',
+        name: CLOUD_COLLECTIONS.appeals,
         read: () => this.appeals,
         write: (records) => {
           this.appeals = records as Appeal[]
         },
       },
       {
-        name: 'lesson_ledger',
+        name: CLOUD_COLLECTIONS.ledger,
         read: () => this.ledger,
         write: (records) => {
           this.ledger = records as LedgerEntry[]
         },
       },
       {
-        name: 'admins',
+        name: CLOUD_COLLECTIONS.admins,
         read: () => this.admins,
         write: (records) => {
           this.admins = records as Admin[]
         },
       },
       {
-        name: 'admin_sessions',
+        name: CLOUD_COLLECTIONS.adminSessions,
         read: () => this.sessions,
         write: (records) => {
           this.sessions = records as AdminSession[]
@@ -148,8 +167,20 @@ export class CloudBaseStore implements Store {
   private async loadFrom(database: CloudDatabase): Promise<void> {
     await Promise.all(
       this.definitions().map(async (definition) => {
-        const result = await database.collection(definition.name).get()
-        definition.write(recordsFromResult(result.data))
+        const records: Array<Record<string, unknown>> = []
+        let offset = 0
+        while (true) {
+          const result = await database
+            .collection(definition.name)
+            .limit(PAGE_SIZE)
+            .skip(offset)
+            .get()
+          const page = recordsFromResult(result.data)
+          records.push(...page)
+          if (page.length < PAGE_SIZE) break
+          offset += PAGE_SIZE
+        }
+        definition.write(records)
       }),
     )
   }
@@ -159,40 +190,47 @@ export class CloudBaseStore implements Store {
   }
 
   async transaction<T>(work: () => Promise<T> | T): Promise<T> {
-    return this.database.runTransaction(async (transaction) => {
-      const lock = transaction.collection('system_locks').doc('domain')
-      const lockResult = await lock.get()
-      const previousVersion =
-        lockResult.data && typeof lockResult.data === 'object' && 'version' in lockResult.data
-          ? Number(lockResult.data.version)
-          : 0
-      await this.loadFrom(transaction)
-      const before = new Map(
-        this.definitions().map((definition) => [
-          definition.name,
-          new Map(definition.read().map((record) => [record.id, JSON.stringify(record)] as const)),
-        ]),
-      )
+    try {
+      return await this.database.runTransaction(async (transaction) => {
+        const lock = transaction.collection(CLOUD_COLLECTIONS.systemLocks).doc('domain')
+        const lockResult = await lock.get()
+        const previousVersion =
+          lockResult.data && typeof lockResult.data === 'object' && 'version' in lockResult.data
+            ? Number(lockResult.data.version)
+            : 0
+        await this.loadFrom(transaction)
+        const before = new Map(
+          this.definitions().map((definition) => [
+            definition.name,
+            new Map(
+              definition.read().map((record) => [record.id, JSON.stringify(record)] as const),
+            ),
+          ]),
+        )
 
-      const result = await work()
-      for (const definition of this.definitions()) {
-        const collection = transaction.collection(definition.name)
-        const previous = before.get(definition.name) ?? new Map<string, string>()
-        const current = new Map(definition.read().map((record) => [record.id, record] as const))
-        for (const [id, record] of current) {
-          if (previous.get(id) !== JSON.stringify(record)) {
-            await collection.doc(id).set({
-              data: structuredClone(record) as unknown as Record<string, unknown>,
-            })
+        const result = await work()
+        for (const definition of this.definitions()) {
+          const collection = transaction.collection(definition.name)
+          const previous = before.get(definition.name) ?? new Map<string, string>()
+          const current = new Map(definition.read().map((record) => [record.id, record] as const))
+          for (const [id, record] of current) {
+            if (previous.get(id) !== JSON.stringify(record)) {
+              await collection
+                .doc(id)
+                .set(structuredClone(record) as unknown as Record<string, unknown>)
+            }
+          }
+          for (const id of previous.keys()) {
+            if (!current.has(id)) await collection.doc(id).remove()
           }
         }
-        for (const id of previous.keys()) {
-          if (!current.has(id)) await collection.doc(id).remove()
-        }
-      }
-      await lock.set({ data: { version: previousVersion + 1 } })
-      return result
-    })
+        await lock.set({ version: previousVersion + 1 })
+        return result
+      })
+    } catch (error) {
+      await this.load()
+      throw error
+    }
   }
 
   nextId(prefix: string): string {

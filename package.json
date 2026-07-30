@@ -1,8 +1,8 @@
 {
-  "name": "group-meal",
+  "name": "purui-gym",
   "version": "1.0.0",
   "private": true,
-  "description": "拼饭微信小程序",
+  "description": "普瑞健身会员预约、教练排班与运营管理系统",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
@@ -12,11 +12,13 @@
     "admin:test": "vitest run admin/src",
     "admin:typecheck": "tsc --noEmit -p admin/tsconfig.json",
     "cloud:test": "vitest run cloudfunctions",
+    "cloud:build": "npm run build --prefix cloudfunctions/gym-api && npm run build --prefix cloudfunctions/auto-complete-lessons && npm run build --prefix cloudfunctions/wechat-payment-notify",
+    "verify:production-config": "node scripts/verify-production-config.mjs",
     "format": "biome format --write . && prettier --write \"miniprogram/**/*.{wxml,less}\"",
     "lint": "biome lint . && stylelint \"miniprogram/**/*.less\"",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "check": "biome check . && prettier --check \"miniprogram/**/*.{wxml,less}\" && stylelint \"miniprogram/**/*.less\" && npm run typecheck && npm run admin:typecheck",
-    "verify": "npm run check && npm run test && npm run admin:test && npm run admin:build"
+    "verify": "npm run check && npm run test && npm run cloud:build && npm run admin:build"
   },
   "dependencies": {
     "@cloudbase/js-sdk": "3.6.7",

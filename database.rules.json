@@ -7,11 +7,11 @@
     "read": false,
     "write": false
   },
-  "package_products": {
+  "products": {
     "read": false,
     "write": false
   },
-  "membership_packages": {
+  "memberships": {
     "read": false,
     "write": false
   },
@@ -31,7 +31,7 @@
     "read": false,
     "write": false
   },
-  "lesson_ledger": {
+  "ledger": {
     "read": false,
     "write": false
   },
@@ -39,7 +39,7 @@
     "read": false,
     "write": false
   },
-  "admin_sessions": {
+  "adminSessions": {
     "read": false,
     "write": false
   },

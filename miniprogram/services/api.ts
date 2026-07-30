@@ -38,6 +38,7 @@ export type LessonView = Lesson & {
   cancelHint: string
   canComplete: boolean
   canAppeal: boolean
+  canSaveFeedback: boolean
   appeal?: Appeal
 }
 
@@ -57,6 +58,22 @@ export interface PurchasePackageInput {
   requestId: string
 }
 
+export type PurchaseResult =
+  | {
+      status: 'paid'
+      membership: MembershipPackage
+    }
+  | {
+      status: 'pending'
+      orderId: string
+      requestId: string
+    }
+
+export interface QueryPurchaseInput {
+  orderId: string
+  requestId: string
+}
+
 export interface BookLessonInput {
   coachId: string
   membershipPackageId: string
@@ -69,7 +86,9 @@ export interface LessonMutationInput {
   requestId: string
 }
 
-export interface CompleteLessonInput extends LessonMutationInput {
+export type CompleteLessonInput = LessonMutationInput
+
+export interface SaveFeedbackInput extends LessonMutationInput {
   rating?: 1 | 2 | 3 | 4 | 5
   comment?: string
 }
@@ -100,13 +119,15 @@ export interface GymApi {
   getSession(): Promise<SessionView>
   switchRole(role: UserRole): Promise<SessionView>
   getMemberHome(): Promise<MemberHomeView>
-  purchasePackage(input: PurchasePackageInput): Promise<MembershipPackage>
+  purchasePackage(input: PurchasePackageInput): Promise<PurchaseResult>
+  queryPurchase(input: QueryPurchaseInput): Promise<PurchaseResult>
   getCoachSchedule(coachId: string, date: string): Promise<CoachScheduleView>
   bookLesson(input: BookLessonInput): Promise<Lesson>
   listMemberLessons(): Promise<MemberLessonsView>
   getLesson(lessonId: string): Promise<LessonView>
   cancelLesson(input: LessonMutationInput): Promise<Lesson>
   completeLesson(input: CompleteLessonInput): Promise<Lesson>
+  saveFeedback(input: SaveFeedbackInput): Promise<Lesson>
   submitAppeal(input: SubmitAppealInput): Promise<Appeal>
   getCoachDashboard(date: string): Promise<CoachDashboardView>
   getOwnCoachSchedule(date: string): Promise<CoachScheduleView>

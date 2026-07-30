@@ -14,6 +14,9 @@ import type {
   MemberHomeView,
   MemberLessonsView,
   PurchasePackageInput,
+  PurchaseResult,
+  QueryPurchaseInput,
+  SaveFeedbackInput,
   SessionView,
   SetDayAvailabilityInput,
   SetSlotAvailabilityInput,
@@ -73,14 +76,17 @@ export class DevelopmentApi implements GymApi {
     }
   }
 
-  async purchasePackage(input: PurchasePackageInput): Promise<MembershipPackage> {
+  async purchasePackage(input: PurchasePackageInput): Promise<PurchaseResult> {
     const state = this.store.read()
     const existingId = state.requests[input.requestId]
     if (existingId) {
-      return required(
-        state.memberships.find((membership) => membership.id === existingId),
-        '测试购买记录不存在',
-      )
+      return {
+        status: 'paid',
+        membership: required(
+          state.memberships.find((membership) => membership.id === existingId),
+          '测试购买记录不存在',
+        ),
+      }
     }
     const product = required(
       state.products.find(
@@ -111,7 +117,19 @@ export class DevelopmentApi implements GymApi {
       draft.memberships.push(membership)
       draft.requests[input.requestId] = membership.id
     })
-    return membership
+    return { status: 'paid', membership }
+  }
+
+  async queryPurchase(input: QueryPurchaseInput): Promise<PurchaseResult> {
+    const state = this.store.read()
+    const membershipId = state.requests[input.requestId]
+    const membership = state.memberships.find(
+      (candidate) => candidate.id === membershipId || candidate.id === input.orderId,
+    )
+    if (!membership) {
+      return { status: 'pending', orderId: input.orderId, requestId: input.requestId }
+    }
+    return { status: 'paid', membership }
   }
 
   async getCoachSchedule(coachId: string, date: string): Promise<CoachScheduleView> {
@@ -152,6 +170,9 @@ export class DevelopmentApi implements GymApi {
     )
     if (membership.coachId !== input.coachId || membership.availableLessons < 1) {
       throw new Error('请选择当前教练且有可用课时的课包')
+    }
+    if (Date.parse(input.startsAt) <= this.now().getTime()) {
+      throw new Error('只能预约尚未开始的时段')
     }
     const schedule = await this.getCoachSchedule(input.coachId, datePart(input.startsAt))
     const slot = required(
@@ -208,36 +229,66 @@ export class DevelopmentApi implements GymApi {
   }
 
   async cancelLesson(input: LessonMutationInput): Promise<Lesson> {
-    return this.transitionBooked(input, (lesson) => {
+    return this.transitionBooked(input, (lesson, draft) => {
       if (!canMemberCancel(new Date(lesson.startsAt), this.now())) {
         throw new Error('不足 2 小时，请联系教练处理')
       }
-      this.releaseLockedLesson(lesson.membershipPackageId, false)
+      this.adjustLockedLesson(draft, lesson.membershipPackageId, false)
       return { ...lesson, status: 'member_cancelled' }
     })
   }
 
   async completeLesson(input: CompleteLessonInput): Promise<Lesson> {
-    return this.transitionBooked(input, (lesson) => {
+    return this.transitionBooked(input, (lesson, draft) => {
       if (new Date(lesson.endsAt).getTime() > this.now().getTime()) {
         throw new Error('课程结束后才能确认完成')
       }
-      this.releaseLockedLesson(lesson.membershipPackageId, true)
-      const completed: Lesson = {
+      this.adjustLockedLesson(draft, lesson.membershipPackageId, true)
+      return {
         ...lesson,
         status: 'completed',
         completionSource: 'member',
         consumedAt: this.now().toISOString(),
-        ...((input.rating || input.comment?.trim()) && {
-          feedback: {
-            ...(input.rating ? { rating: input.rating } : {}),
-            ...(input.comment?.trim() ? { comment: input.comment.trim() } : {}),
-            submittedAt: this.now().toISOString(),
-          },
-        }),
       }
-      return completed
     })
+  }
+
+  async saveFeedback(input: SaveFeedbackInput): Promise<Lesson> {
+    const state = this.store.read()
+    const existingId = state.requests[input.requestId]
+    if (existingId) {
+      return required(
+        state.lessons.find((lesson) => lesson.id === existingId),
+        '课程记录不存在',
+      )
+    }
+    const lesson = required(
+      state.lessons.find((candidate) => candidate.id === input.lessonId),
+      '课程不存在',
+    )
+    if (lesson.status !== 'completed') {
+      throw new Error('课程完成后才能反馈')
+    }
+    if (lesson.feedback) {
+      throw new Error('该课程已提交反馈')
+    }
+    if (!input.rating && !input.comment?.trim()) {
+      throw new Error('请填写星级或训练感受')
+    }
+    const next: Lesson = {
+      ...lesson,
+      feedback: {
+        ...(input.rating ? { rating: input.rating } : {}),
+        ...(input.comment?.trim() ? { comment: input.comment.trim() } : {}),
+        submittedAt: this.now().toISOString(),
+      },
+    }
+    this.store.update((draft) => {
+      const index = draft.lessons.findIndex((candidate) => candidate.id === lesson.id)
+      draft.lessons[index] = next
+      draft.requests[input.requestId] = lesson.id
+    })
+    return next
   }
 
   async submitAppeal(input: SubmitAppealInput): Promise<Appeal> {
@@ -329,8 +380,8 @@ export class DevelopmentApi implements GymApi {
   }
 
   async coachCancelLesson(input: CoachCancelInput): Promise<Lesson> {
-    return this.transitionBooked(input, (lesson) => {
-      this.releaseLockedLesson(lesson.membershipPackageId, input.consumeLesson)
+    return this.transitionBooked(input, (lesson, draft) => {
+      this.adjustLockedLesson(draft, lesson.membershipPackageId, input.consumeLesson)
       return input.consumeLesson
         ? {
             ...lesson,
@@ -342,11 +393,11 @@ export class DevelopmentApi implements GymApi {
   }
 
   async coachCompleteLesson(input: LessonMutationInput): Promise<Lesson> {
-    return this.transitionBooked(input, (lesson) => {
+    return this.transitionBooked(input, (lesson, draft) => {
       if (new Date(lesson.endsAt).getTime() > this.now().getTime()) {
         throw new Error('课程结束后才能确认完成')
       }
-      this.releaseLockedLesson(lesson.membershipPackageId, true)
+      this.adjustLockedLesson(draft, lesson.membershipPackageId, true)
       return {
         ...lesson,
         status: 'completed',
@@ -358,7 +409,7 @@ export class DevelopmentApi implements GymApi {
 
   private async transitionBooked(
     input: LessonMutationInput,
-    transition: (lesson: Extract<Lesson, { status: 'booked' }>) => Lesson,
+    transition: (lesson: Extract<Lesson, { status: 'booked' }>, state: DevelopmentState) => Lesson,
   ): Promise<Lesson> {
     const state = this.store.read()
     const existingId = state.requests[input.requestId]
@@ -375,28 +426,39 @@ export class DevelopmentApi implements GymApi {
     if (lesson.status !== 'booked') {
       throw new Error('课程已处理，请刷新查看')
     }
-    const next = transition(lesson)
+    let next: Lesson | undefined
     this.store.update((draft) => {
+      const current = required(
+        draft.lessons.find((candidate) => candidate.id === input.lessonId),
+        '课程不存在',
+      )
+      if (current.status !== 'booked') {
+        throw new Error('课程已处理，请刷新查看')
+      }
+      const transitioned = transition(current, draft)
+      next = transitioned
       const index = draft.lessons.findIndex((candidate) => candidate.id === lesson.id)
-      draft.lessons[index] = next
+      draft.lessons[index] = transitioned
       draft.requests[input.requestId] = lesson.id
     })
-    return next
+    return required(next, '课程处理失败')
   }
 
-  private releaseLockedLesson(membershipId: string, consume: boolean): void {
-    this.store.update((draft) => {
-      const membership = required(
-        draft.memberships.find((candidate) => candidate.id === membershipId),
-        '课包不存在',
-      )
-      membership.lockedLessons -= 1
-      if (consume) {
-        membership.usedLessons += 1
-      } else {
-        membership.availableLessons += 1
-      }
-    })
+  private adjustLockedLesson(
+    state: DevelopmentState,
+    membershipId: string,
+    consume: boolean,
+  ): void {
+    const membership = required(
+      state.memberships.find((candidate) => candidate.id === membershipId),
+      '课包不存在',
+    )
+    membership.lockedLessons -= 1
+    if (consume) {
+      membership.usedLessons += 1
+    } else {
+      membership.availableLessons += 1
+    }
   }
 
   private toLessonView(state: DevelopmentState, lesson: Lesson): LessonView {
@@ -417,6 +479,7 @@ export class DevelopmentApi implements GymApi {
       packageName: membership.productName,
       statusText: statusText[lesson.status],
       ...actions,
+      canSaveFeedback: lesson.status === 'completed' && !lesson.feedback,
       ...(state.appeals.find((appeal) => appeal.lessonId === lesson.id)
         ? { appeal: state.appeals.find((appeal) => appeal.lessonId === lesson.id) }
         : {}),

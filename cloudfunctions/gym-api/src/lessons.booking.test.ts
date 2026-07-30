@@ -19,6 +19,7 @@ const membership: MembershipPackage = {
   id: 'package-1',
   memberId: 'member-1',
   coachId: coach.id,
+  coachName: coach.name,
   productId: 'product-1',
   productName: '私教课',
   purchasePriceCents: 500,

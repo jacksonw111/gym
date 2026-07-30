@@ -18,6 +18,76 @@
         "inputs": {
           "collections": [
             {
+              "collectionName": "users",
+              "createIndexes": [
+                {
+                  "name": "openid_unique",
+                  "keys": [
+                    {
+                      "name": "openId",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                }
+              ]
+            },
+            {
+              "collectionName": "coaches",
+              "createIndexes": [
+                {
+                  "name": "coach_user_unique",
+                  "keys": [
+                    {
+                      "name": "userId",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                }
+              ]
+            },
+            {
+              "collectionName": "products"
+            },
+            {
+              "collectionName": "memberships"
+            },
+            {
+              "collectionName": "orders",
+              "createIndexes": [
+                {
+                  "name": "payment_id_unique",
+                  "keys": [
+                    {
+                      "name": "paymentId",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                }
+              ]
+            },
+            {
+              "collectionName": "schedules",
+              "createIndexes": [
+                {
+                  "name": "coach_schedule_unique",
+                  "keys": [
+                    {
+                      "name": "coachId",
+                      "direction": 1
+                    },
+                    {
+                      "name": "startsAt",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                }
+              ]
+            },
+            {
               "collectionName": "lessons",
               "createIndexes": [
                 {
@@ -64,19 +134,16 @@
               ]
             },
             {
-              "collectionName": "orders",
-              "createIndexes": [
-                {
-                  "name": "payment_id_unique",
-                  "keys": [
-                    {
-                      "name": "paymentId",
-                      "direction": 1
-                    }
-                  ],
-                  "unique": true
-                }
-              ]
+              "collectionName": "ledger"
+            },
+            {
+              "collectionName": "admins"
+            },
+            {
+              "collectionName": "adminSessions"
+            },
+            {
+              "collectionName": "system_locks"
             }
           ]
         }
@@ -88,7 +155,9 @@
           "functions": [
             {
               "name": "gym-api",
+              "installDependency": true,
               "config": {
+                "handler": "dist/index.main",
                 "timeout": 10,
                 "runtime": "Nodejs18.15",
                 "memorySize": 256,
@@ -96,19 +165,23 @@
                   "NODE_ENV": "production",
                   "DEVELOPMENT_PAYMENTS_ENABLED": "false",
                   "WECHAT_PAYMENT_CREATE_URL": "{{env.WECHAT_PAYMENT_CREATE_URL}}",
-                  "WECHAT_PAYMENT_API_TOKEN": "{{env.WECHAT_PAYMENT_API_TOKEN}}"
+                  "WECHAT_PAYMENT_API_TOKEN": "{{env.WECHAT_PAYMENT_API_TOKEN}}",
+                  "INTERNAL_SCHEDULER_TOKEN": "{{env.INTERNAL_SCHEDULER_TOKEN}}"
                 }
               }
             },
             {
               "name": "auto-complete-lessons",
+              "installDependency": true,
               "config": {
+                "handler": "dist/index.main",
                 "timeout": 60,
                 "runtime": "Nodejs18.15",
                 "memorySize": 256,
                 "envVariables": {
                   "NODE_ENV": "production",
-                  "DEVELOPMENT_PAYMENTS_ENABLED": "false"
+                  "DEVELOPMENT_PAYMENTS_ENABLED": "false",
+                  "INTERNAL_SCHEDULER_TOKEN": "{{env.INTERNAL_SCHEDULER_TOKEN}}"
                 }
               },
               "triggers": [
@@ -118,6 +191,21 @@
                   "config": "0 0 * * * * *"
                 }
               ]
+            },
+            {
+              "name": "wechat-payment-notify",
+              "installDependency": true,
+              "config": {
+                "handler": "dist/index.main",
+                "timeout": 10,
+                "runtime": "Nodejs18.15",
+                "memorySize": 256,
+                "envVariables": {
+                  "NODE_ENV": "production",
+                  "WECHAT_PAYMENT_VERIFY_URL": "{{env.WECHAT_PAYMENT_VERIFY_URL}}",
+                  "WECHAT_PAYMENT_API_TOKEN": "{{env.WECHAT_PAYMENT_API_TOKEN}}"
+                }
+              }
             }
           ]
         }

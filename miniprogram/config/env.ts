@@ -2,29 +2,47 @@ export type ApplicationMode = 'development' | 'production'
 
 export interface EnvironmentInput {
   mode: ApplicationMode
-  cloudEnvId: string
+  cloudEnvId?: string
+  useDefaultCloudEnvironment: boolean
+  useLocalData: boolean
   testPaymentEnabled: boolean
 }
 
-export interface EnvironmentConfig extends EnvironmentInput {
-  useLocalData: boolean
-}
+export type EnvironmentConfig = EnvironmentInput
 
 export const resolveEnvironment = (input: EnvironmentInput): EnvironmentConfig => {
-  if (input.mode === 'production' && input.cloudEnvId.trim() === '') {
-    throw new Error('生产环境必须配置 CloudBase 环境')
+  if (
+    input.mode === 'production' &&
+    !input.cloudEnvId?.trim() &&
+    !input.useDefaultCloudEnvironment
+  ) {
+    throw new Error('生产环境必须配置 CloudBase 环境或启用微信默认云环境')
   }
   if (input.mode === 'production' && input.testPaymentEnabled) {
     throw new Error('生产环境禁止测试支付')
   }
-
-  return {
-    ...input,
-    useLocalData: input.mode === 'development',
+  if (input.mode === 'production' && input.useLocalData) {
+    throw new Error('生产环境禁止使用本地模拟数据')
   }
+
+  return input
 }
 
-const CLOUD_ENV_ID = ''
+export interface CloudInitializationOptions {
+  traceUser: true
+  env?: string
+}
+
+export const getCloudInitializationOptions = (
+  environment: EnvironmentConfig,
+): CloudInitializationOptions => ({
+  traceUser: true,
+  ...(environment.cloudEnvId?.trim() ? { env: environment.cloudEnvId.trim() } : {}),
+})
+
+const CLOUD_ENV_ID: string | undefined = undefined
+const USE_DEFAULT_CLOUD_ENVIRONMENT = true
+const USE_LOCAL_DEVELOPMENT_DATA = false
 
 export const getEnvironment = (): EnvironmentConfig => {
   const wechat = globalThis as unknown as {
@@ -36,6 +54,8 @@ export const getEnvironment = (): EnvironmentConfig => {
   return resolveEnvironment({
     mode,
     cloudEnvId: CLOUD_ENV_ID,
-    testPaymentEnabled: mode === 'development',
+    useDefaultCloudEnvironment: USE_DEFAULT_CLOUD_ENVIRONMENT,
+    useLocalData: mode === 'development' && USE_LOCAL_DEVELOPMENT_DATA,
+    testPaymentEnabled: mode === 'development' && USE_LOCAL_DEVELOPMENT_DATA,
   })
 }

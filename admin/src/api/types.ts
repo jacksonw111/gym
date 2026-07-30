@@ -117,6 +117,7 @@ export interface AdminData {
 
 export interface CoachInput {
   id?: string
+  userId: string
   name: string
   phone: string
   specialty: string
@@ -134,7 +135,7 @@ export interface AdminApi {
   login(username: string, password: string): Promise<void>
   logout(): Promise<void>
   loadData(): Promise<AdminData>
-  saveCoach(input: CoachInput): Promise<void>
+  saveCoach(input: CoachInput): Promise<{ id: string }>
   setCoachStatus(id: string, status: CoachStatus): Promise<void>
   adjustPackage(packageId: string, delta: number, note: string): Promise<void>
   saveProduct(input: ProductInput): Promise<void>

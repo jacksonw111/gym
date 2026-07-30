@@ -1,4 +1,5 @@
 import { buildMemberHomeModel, formatPrice } from '../../models/member'
+import { formatShanghaiHour, getShanghaiDateParts } from '../../models/time-display'
 import { getApi } from '../../services/api'
 import type { Coach, Lesson, MembershipPackage, PackageProduct } from '../../shared/contracts'
 
@@ -78,11 +79,11 @@ Page({
   },
 
   toNextLesson(lesson: Lesson, coaches: Coach[]): NextLessonRow {
-    const startsAt = new Date(lesson.startsAt)
+    const startsAt = getShanghaiDateParts(lesson.startsAt)
     return {
       id: lesson.id,
       coachName: coaches.find((coach) => coach.id === lesson.coachId)?.name ?? '教练',
-      time: `${startsAt.getMonth() + 1} 月 ${startsAt.getDate()} 日 ${String(startsAt.getHours()).padStart(2, '0')}:00`,
+      time: `${startsAt.month} 月 ${startsAt.day} 日 ${formatShanghaiHour(lesson.startsAt)}`,
     }
   },
 

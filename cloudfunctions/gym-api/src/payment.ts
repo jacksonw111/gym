@@ -1,5 +1,5 @@
 import { grantPaidOrder } from './packages'
-import type { MembershipPackage, Order, Store } from './store'
+import { DomainError, type MembershipPackage, type Order, type Store } from './store'
 
 export interface PaymentParameters {
   timeStamp: string
@@ -74,8 +74,8 @@ export const createDevPayment = async (
   environment: PaymentEnvironment,
   input: DevPaymentInput,
 ): Promise<MembershipPackage> => {
-  if (environment.production) throw new Error('生产环境禁止测试支付')
-  if (!environment.developmentPaymentsEnabled) throw new Error('测试支付未开启')
+  if (environment.production) throw new DomainError('生产环境禁止测试支付')
+  if (!environment.developmentPaymentsEnabled) throw new DomainError('测试支付未开启')
   return grantPaidOrder(store, {
     orderId: input.orderId,
     paymentId: `dev-${input.orderId}`,
@@ -83,17 +83,58 @@ export const createDevPayment = async (
   })
 }
 
-export interface WechatPaymentNotification {
+export interface RawWechatPaymentNotification {
+  headers: Record<string, string>
+  body: string
+}
+
+export interface VerifiedWechatPayment {
   orderId: string
   paymentId: string
   paidAt: string
-  verifiedServerNotification: boolean
 }
 
-export const processWechatPayment = async (
-  store: Store,
-  notification: WechatPaymentNotification,
-): Promise<MembershipPackage> => {
-  if (!notification.verifiedServerNotification) throw new Error('微信支付通知未通过服务端验证')
-  return grantPaidOrder(store, notification)
+export interface WechatPaymentNotificationVerifier {
+  verify(notification: RawWechatPaymentNotification): Promise<VerifiedWechatPayment>
 }
+
+export const createPaymentNotificationHandler = (
+  store: Store,
+  verifier?: WechatPaymentNotificationVerifier,
+) => {
+  return async (notification: RawWechatPaymentNotification): Promise<MembershipPackage> => {
+    if (!verifier) throw new DomainError('微信支付商户验证服务未配置')
+    const verified = await verifier.verify(notification)
+    return grantPaidOrder(store, verified)
+  }
+}
+
+export const createRemoteWechatNotificationVerifier = (
+  config: { endpoint: string; apiToken: string },
+  fetcher: PaymentServiceFetch = fetch,
+): WechatPaymentNotificationVerifier => ({
+  async verify(notification) {
+    const response = await fetcher(config.endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(notification),
+    })
+    if (!response.ok) throw new DomainError('微信支付平台签名验证失败')
+    const result = await response.json()
+    if (!result || typeof result !== 'object') {
+      throw new Error('微信支付验证服务返回无效')
+    }
+    const candidate = result as Partial<VerifiedWechatPayment>
+    if (
+      typeof candidate.orderId !== 'string' ||
+      typeof candidate.paymentId !== 'string' ||
+      typeof candidate.paidAt !== 'string'
+    ) {
+      throw new Error('微信支付验证服务返回无效')
+    }
+    return candidate as VerifiedWechatPayment
+  },
+})

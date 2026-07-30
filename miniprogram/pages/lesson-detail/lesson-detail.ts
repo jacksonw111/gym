@@ -1,3 +1,5 @@
+import { completeThenSaveFeedback } from '../../models/completion-flow'
+import { formatShanghaiHourRange, getShanghaiDateParts } from '../../models/time-display'
 import { createRequestId, getApi, type LessonView } from '../../services/api'
 
 type LessonDetailRow = LessonView & {
@@ -6,12 +8,11 @@ type LessonDetailRow = LessonView & {
 }
 
 const decorate = (lesson: LessonView): LessonDetailRow => {
-  const startsAt = new Date(lesson.startsAt)
-  const endsAt = new Date(lesson.endsAt)
+  const startsAt = getShanghaiDateParts(lesson.startsAt)
   return {
     ...lesson,
-    dateLabel: `${startsAt.getFullYear()} 年 ${startsAt.getMonth() + 1} 月 ${startsAt.getDate()} 日`,
-    timeLabel: `${String(startsAt.getHours()).padStart(2, '0')}:00–${String(endsAt.getHours()).padStart(2, '0')}:00`,
+    dateLabel: `${startsAt.year} 年 ${startsAt.month} 月 ${startsAt.day} 日`,
+    timeLabel: formatShanghaiHourRange(lesson.startsAt, lesson.endsAt),
   }
 }
 
@@ -84,21 +85,76 @@ Page({
   },
 
   async completeLesson() {
-    if (!this.data.lesson?.canComplete) {
+    if (this.data.submitting || !this.data.lesson?.canComplete) {
       wx.showToast({ title: '课程结束后才能确认', icon: 'none' })
+      return
+    }
+    const rating =
+      this.data.rating >= 1 && this.data.rating <= 5
+        ? (this.data.rating as 1 | 2 | 3 | 4 | 5)
+        : undefined
+    const comment = this.data.comment.trim()
+    const hasFeedback = Boolean(rating || comment)
+    const api = getApi()
+    this.setData({ submitting: true })
+    try {
+      const outcome = await completeThenSaveFeedback({
+        complete: async () => {
+          await api.completeLesson({
+            lessonId: this.data.lessonId,
+            requestId: createRequestId('member-complete'),
+          })
+        },
+        refreshCompleted: async () => {
+          await this.load()
+        },
+        saveFeedback: async () => {
+          await api.saveFeedback({
+            lessonId: this.data.lessonId,
+            requestId: createRequestId('feedback'),
+            ...(rating ? { rating } : {}),
+            ...(comment ? { comment } : {}),
+          })
+        },
+        hasFeedback,
+      })
+      if (!outcome.feedbackSaved) {
+        wx.showToast({ title: '课程已完成，反馈暂未保存', icon: 'none' })
+        return
+      }
+      if (hasFeedback) {
+        await this.load()
+      }
+      wx.showToast({ title: '课程已完成', icon: 'success' })
+    } catch (error) {
+      wx.showToast({
+        title: error instanceof Error ? error.message : '完成失败，请重试',
+        icon: 'none',
+      })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  async saveFeedback() {
+    const rating =
+      this.data.rating >= 1 && this.data.rating <= 5
+        ? (this.data.rating as 1 | 2 | 3 | 4 | 5)
+        : undefined
+    const comment = this.data.comment.trim()
+    if (!rating && !comment) {
+      wx.showToast({ title: '请填写星级或训练感受', icon: 'none' })
       return
     }
     await this.runAction(
       () =>
-        getApi().completeLesson({
+        getApi().saveFeedback({
           lessonId: this.data.lessonId,
-          requestId: createRequestId('member-complete'),
-          ...(this.data.rating >= 1 && this.data.rating <= 5
-            ? { rating: this.data.rating as 1 | 2 | 3 | 4 | 5 }
-            : {}),
-          ...(this.data.comment.trim() ? { comment: this.data.comment.trim() } : {}),
+          requestId: createRequestId('feedback'),
+          ...(rating ? { rating } : {}),
+          ...(comment ? { comment } : {}),
         }),
-      '课程已完成',
+      '反馈已保存',
     )
   },
 

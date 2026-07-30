@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createCloudHandler, createRouter } from './index'
 import { createDevelopmentSeed } from './seed'
 import { MemoryStore } from './store'
@@ -20,6 +20,25 @@ describe('CloudBase action router', () => {
 
   it('bootstrap 从服务端微信 identity 解析当前会员', async () => {
     const seed = createDevelopmentSeed()
+    seed.orders = [
+      {
+        id: 'order-bootstrap-1',
+        requestId: 'purchase-bootstrap-1',
+        memberId: 'member-1',
+        coachId: 'coach-1',
+        coachName: '示例教练',
+        productId: 'product-1',
+        productSnapshot: {
+          id: 'product-1',
+          name: '十节私教课',
+          priceCents: 5_000,
+          lessonCount: 10,
+        },
+        status: 'paid',
+        createdAt: '2026-07-01T00:00:00.000Z',
+        packageId: 'membership-1',
+      },
+    ]
     const store = new MemoryStore(seed)
     const router = createRouter(store, {
       developmentPaymentsEnabled: true,
@@ -45,9 +64,91 @@ describe('CloudBase action router', () => {
         memberships: [],
         lessons: [],
         appeals: [],
+        orders: [
+          {
+            id: 'order-bootstrap-1',
+            status: 'paid',
+            membershipId: 'membership-1',
+          },
+        ],
         coach: { schedule: [], lessons: [] },
       },
     })
+  })
+
+  it('bootstrap 为首次进入的真实微信用户创建会员记录并重复复用', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const request = {
+      action: 'bootstrap',
+      requestId: 'bootstrap-new-member',
+      payload: {},
+      identity: { openId: 'real-wechat-openid' },
+    }
+
+    const first = await router(request)
+    const second = await router({ ...request, requestId: 'bootstrap-new-member-again' })
+
+    expect(first).toMatchObject({
+      ok: true,
+      data: {
+        profile: {
+          openId: 'real-wechat-openid',
+          name: '新会员',
+          roles: ['member'],
+        },
+        activeRole: 'member',
+      },
+    })
+    expect(second).toMatchObject({
+      ok: true,
+      data: { profile: { openId: 'real-wechat-openid' } },
+    })
+    expect(store.users.filter((item) => item.openId === 'real-wechat-openid')).toHaveLength(1)
+  })
+
+  it('getSchedule 为真实教练日期首次访问创建默认开放的十一个时段', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+
+    const response = await router({
+      action: 'getSchedule',
+      requestId: 'schedule-defaults',
+      payload: { coachId: 'coach-1', date: '2026-09-01', includeClosed: true },
+      identity: { openId: 'dev-member-openid' },
+    })
+
+    if (!response.ok) throw new Error('排班读取失败')
+    expect(response.data).toHaveLength(11)
+    expect(response.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          coachId: 'coach-1',
+          startsAt: '2026-09-01T10:00:00+08:00',
+          endsAt: '2026-09-01T11:00:00+08:00',
+          open: true,
+        }),
+      ]),
+    )
+    expect(response.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          startsAt: '2026-09-01T20:00:00+08:00',
+          endsAt: '2026-09-01T21:00:00+08:00',
+        }),
+      ]),
+    )
+    expect(
+      store.schedules.filter(
+        (item) => item.coachId === 'coach-1' && item.startsAt.startsWith('2026-09-01'),
+      ),
+    ).toHaveLength(11)
   })
 
   it('云入口忽略客户端伪造 identity，只采用服务端解析结果', async () => {
@@ -73,6 +174,9 @@ describe('CloudBase action router', () => {
 
   it('bootstrap 为教练身份返回自己的排班、课程和相关申诉', async () => {
     const seed = createDevelopmentSeed()
+    const member = seed.users?.find((item) => item.id === 'member-1')
+    if (!member) throw new Error('测试种子缺失')
+    member.phone = '13800000000'
     seed.lessons = [
       {
         id: 'lesson-coach-1',
@@ -115,11 +219,23 @@ describe('CloudBase action router', () => {
       data: {
         actor: { kind: 'coach', id: 'coach-1' },
         activeRole: 'coach',
-        lessons: [{ id: 'lesson-coach-1' }],
+        lessons: [
+          {
+            id: 'lesson-coach-1',
+            memberName: '示例会员',
+            memberPhone: '13800000000',
+          },
+        ],
         appeals: [{ id: 'appeal-coach-1' }],
         coach: {
           schedule: [{ id: 'slot-1' }],
-          lessons: [{ id: 'lesson-coach-1' }],
+          lessons: [
+            {
+              id: 'lesson-coach-1',
+              memberName: '示例会员',
+              memberPhone: '13800000000',
+            },
+          ],
         },
       },
     })
@@ -179,6 +295,57 @@ describe('CloudBase action router', () => {
     expect(booked).toMatchObject({ ok: true, data: { memberId: 'member-1', status: 'booked' } })
   })
 
+  it('getSchedule标记他人占用但不泄露会员资料，只给本人课程id', async () => {
+    const seed = createDevelopmentSeed()
+    seed.users?.push({
+      id: 'member-2',
+      openId: 'openid-member-2',
+      name: '其他会员',
+      phone: '13900000000',
+      roles: ['member'],
+    })
+    seed.lessons = [
+      {
+        id: 'lesson-occupied',
+        requestId: 'book-occupied',
+        memberId: 'member-2',
+        coachId: 'coach-1',
+        membershipPackageId: 'package-2',
+        startsAt: '2026-08-01T10:00:00.000Z',
+        endsAt: '2026-08-01T11:00:00.000Z',
+        status: 'booked',
+      },
+    ]
+    const router = createRouter(new MemoryStore(seed), {
+      developmentPaymentsEnabled: true,
+      production: false,
+    })
+
+    const response = await router({
+      action: 'getSchedule',
+      requestId: 'schedule-safe-occupancy',
+      payload: { coachId: 'coach-1' },
+      identity: { openId: 'dev-member-openid' },
+    })
+
+    expect(response).toEqual({
+      ok: true,
+      data: [
+        {
+          id: 'slot-1',
+          coachId: 'coach-1',
+          startsAt: '2026-08-01T10:00:00.000Z',
+          endsAt: '2026-08-01T11:00:00.000Z',
+          open: true,
+          occupied: true,
+        },
+      ],
+    })
+    expect(JSON.stringify(response)).not.toContain('其他会员')
+    expect(JSON.stringify(response)).not.toContain('13900000000')
+    expect(JSON.stringify(response)).not.toContain('lesson-occupied')
+  })
+
   it('管理员 action 必须验证会话，登录后才能查看申诉', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const router = createRouter(store, {
@@ -227,6 +394,8 @@ describe('CloudBase action router', () => {
         bookings: [],
         appeals: [],
         orders: [],
+        ledger: [],
+        schedules: [{ id: 'slot-1' }],
       },
     })
 
@@ -237,7 +406,7 @@ describe('CloudBase action router', () => {
         resource: 'coaches',
         operation: 'save',
         data: {
-          userId: 'coach-user-2',
+          userId: 'member-1',
           name: '新教练',
           status: 'active',
         },
@@ -248,5 +417,183 @@ describe('CloudBase action router', () => {
       ok: true,
       data: { id: expect.any(String), name: '新教练', status: 'active' },
     })
+
+    const missingCoach = await router({
+      action: 'adminCrud',
+      requestId: 'coach-missing-1',
+      payload: {
+        resource: 'coaches',
+        operation: 'get',
+        data: { id: 'missing-coach' },
+      },
+      authToken: token,
+    })
+    expect(missingCoach).toEqual({
+      ok: false,
+      error: { code: 'DOMAIN_ERROR', message: '记录不存在' },
+    })
+  })
+
+  it('管理员新增教练时绑定真实小程序用户并授予教练角色', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const login = await router({
+      action: 'adminLogin',
+      requestId: 'admin-login-for-coach',
+      payload: { username: 'admin', password: 'dev-admin-password' },
+    })
+    if (!login.ok) throw new Error('管理员登录失败')
+    const token = (login.data as { token: string }).token
+
+    const response = await router({
+      action: 'adminCrud',
+      requestId: 'admin-create-coach',
+      authToken: token,
+      payload: {
+        resource: 'coaches',
+        operation: 'save',
+        data: {
+          userId: 'member-1',
+          name: '新教练',
+          phone: '13800000001',
+          specialty: '体能训练',
+        },
+      },
+    })
+
+    expect(response).toMatchObject({
+      ok: true,
+      data: {
+        userId: 'member-1',
+        name: '新教练',
+        status: 'active',
+      },
+    })
+    expect(store.users.find((item) => item.id === 'member-1')?.roles).toContain('coach')
+    expect(store.coaches.filter((item) => item.userId === 'member-1')).toHaveLength(1)
+  })
+
+  it('教练修改开放时间时更新已有时段而不是重复新增', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const identity = { openId: 'dev-coach-openid' }
+
+    await router({
+      action: 'getSchedule',
+      requestId: 'schedule-defaults',
+      payload: { coachId: 'coach-1', date: '2026-08-03', includeClosed: true },
+      identity,
+    })
+    const startsAt = '2026-08-03T10:00:00+08:00'
+    const endsAt = '2026-08-03T11:00:00+08:00'
+
+    await router({
+      action: 'setSchedule',
+      requestId: 'schedule-close',
+      payload: {
+        date: '2026-08-03',
+        slots: [{ startsAt, endsAt, open: false }],
+      },
+      identity,
+    })
+    await router({
+      action: 'setSchedule',
+      requestId: 'schedule-reopen',
+      payload: {
+        date: '2026-08-03',
+        slots: [{ startsAt, endsAt, open: true }],
+      },
+      identity,
+    })
+
+    const daySlots = store.schedules.filter(
+      (slot) => slot.coachId === 'coach-1' && slot.startsAt.startsWith('2026-08-03'),
+    )
+    expect(daySlots).toHaveLength(11)
+    expect(daySlots.find((slot) => slot.startsAt === startsAt)).toMatchObject({
+      id: 'slot-coach-1-2026-08-03-10',
+      open: true,
+    })
+  })
+
+  it.each([
+    ['缺少coach角色', ['member'] as const, 'active' as const],
+    ['教练已停用', ['coach'] as const, 'inactive' as const],
+  ])('拒绝%s的账号设置排班', async (_label, roles, status) => {
+    const seed = createDevelopmentSeed()
+    const coachUser = seed.users?.find((item) => item.id === 'coach-user-1')
+    const seededCoach = seed.coaches?.find((item) => item.id === 'coach-1')
+    if (!coachUser || !seededCoach) throw new Error('测试种子缺失')
+    coachUser.roles = [...roles]
+    seededCoach.status = status
+    const router = createRouter(new MemoryStore(seed), {
+      developmentPaymentsEnabled: true,
+      production: false,
+    })
+
+    const response = await router({
+      action: 'setSchedule',
+      requestId: `schedule-${_label}`,
+      payload: { slots: [] },
+      identity: { openId: coachUser.openId },
+    })
+
+    expect(response).toMatchObject({ ok: false, error: { code: 'UNAUTHORIZED' } })
+  })
+
+  it('未知运行时错误只返回通用中文并记录服务端详情', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+      createPaymentParameters: async () => {
+        throw new Error('ECONNRESET payment-secret')
+      },
+    })
+
+    const response = await router({
+      action: 'purchase',
+      requestId: 'purchase-network-failure',
+      payload: { productId: 'product-1', coachId: 'coach-1' },
+      identity: { openId: 'dev-member-openid' },
+    })
+
+    expect(response).toEqual({
+      ok: false,
+      error: { code: 'INTERNAL_ERROR', message: '操作失败，请稍后重试' },
+    })
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('数据库加载失败也由云入口返回通用中文错误', async () => {
+    const store = new MemoryStore(createDevelopmentSeed()) as MemoryStore & {
+      load: () => Promise<void>
+    }
+    store.load = async () => {
+      throw new Error('database credential leaked')
+    }
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const handler = createCloudHandler(
+      store,
+      { developmentPaymentsEnabled: false, production: true },
+      () => ({ openId: 'dev-member-openid' }),
+    )
+
+    await expect(
+      handler({ action: 'bootstrap', requestId: 'load-failure', payload: {} }),
+    ).resolves.toEqual({
+      ok: false,
+      error: { code: 'INTERNAL_ERROR', message: '操作失败，请稍后重试' },
+    })
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 })

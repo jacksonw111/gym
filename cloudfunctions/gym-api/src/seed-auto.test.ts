@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { autoCompleteDueLessons } from '../../auto-complete-lessons/src/index'
+import { createInternalSchedulerHandler } from './index'
+import { autoCompleteDueLessons } from './lessons'
 import { createDevelopmentSeed } from './seed'
 import { type Lesson, type MembershipPackage, MemoryStore } from './store'
 
@@ -21,6 +22,7 @@ describe('定时自动完成', () => {
       id: 'package-1',
       memberId: 'member-1',
       coachId: 'coach-1',
+      coachName: '教练',
       productId: 'product-1',
       productName: '私教课',
       purchasePriceCents: 500,
@@ -57,5 +59,47 @@ describe('定时自动完成', () => {
     expect(store.lessons.find((item) => item.id === due.id)?.status).toBe('completed')
     expect(store.lessons.find((item) => item.id === notDue.id)?.status).toBe('booked')
     expect(store.packages[0]).toMatchObject({ lockedLessons: 1, usedLessons: 1 })
+  })
+
+  it('内部定时入口必须匹配服务端密钥，且不进入客户端router', async () => {
+    const membership: MembershipPackage = {
+      id: 'package-internal',
+      memberId: 'member-1',
+      coachId: 'coach-1',
+      coachName: '教练',
+      productId: 'product-1',
+      productName: '私教课',
+      purchasePriceCents: 500,
+      totalLessons: 1,
+      availableLessons: 0,
+      lockedLessons: 1,
+      usedLessons: 0,
+      purchasedAt: '2026-07-01T00:00:00.000Z',
+    }
+    const due: Lesson = {
+      id: 'lesson-internal',
+      requestId: 'book-internal',
+      memberId: 'member-1',
+      coachId: 'coach-1',
+      membershipPackageId: membership.id,
+      startsAt: '2026-07-28T09:00:00.000Z',
+      endsAt: '2026-07-28T10:00:00.000Z',
+      status: 'booked',
+    }
+    const store = new MemoryStore({ packages: [membership], lessons: [due] })
+    const handler = createInternalSchedulerHandler(
+      store,
+      'server-scheduler-secret',
+      () => '2026-07-30T10:00:00.000Z',
+    )
+
+    await expect(handler('client-forged')).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'UNAUTHORIZED' },
+    })
+    await expect(handler('server-scheduler-secret')).resolves.toEqual({
+      ok: true,
+      data: { completedLessonIds: ['lesson-internal'] },
+    })
   })
 })

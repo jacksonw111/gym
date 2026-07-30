@@ -172,11 +172,13 @@ export class DevelopmentStore {
   }
 
   read(): DevelopmentState {
-    return JSON.parse(JSON.stringify(this.state)) as DevelopmentState
+    return this.clone(this.state)
   }
 
   update(change: (state: DevelopmentState) => void): DevelopmentState {
-    change(this.state)
+    const next = this.clone(this.state)
+    change(next)
+    this.state = next
     this.save()
     return this.read()
   }
@@ -190,5 +192,9 @@ export class DevelopmentStore {
 
   private save(): void {
     this.storage.set(this.state)
+  }
+
+  private clone(state: DevelopmentState): DevelopmentState {
+    return JSON.parse(JSON.stringify(state)) as DevelopmentState
   }
 }

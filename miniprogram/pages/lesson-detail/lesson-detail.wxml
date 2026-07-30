@@ -106,5 +106,35 @@
         提交申诉
       </button>
     </view>
+    <view wx:if="{{lesson.canSaveFeedback}}" class="feedback">
+      <view class="feedback__title">补充训练反馈</view>
+      <text class="muted">课程已经完成，星级或文字填写一项即可。</text>
+      <view class="stars">
+        <text
+          wx:for="{{[1, 2, 3, 4, 5]}}"
+          wx:key="*this"
+          class="star {{rating >= item ? 'star--active' : ''}}"
+          data-rating="{{item}}"
+          bindtap="selectRating"
+        >
+          ★
+        </text>
+      </view>
+      <textarea
+        class="textarea"
+        maxlength="200"
+        placeholder="训练感受"
+        value="{{comment}}"
+        bindinput="updateComment"
+      ></textarea>
+      <button
+        class="secondary-button"
+        loading="{{submitting}}"
+        disabled="{{submitting}}"
+        bindtap="saveFeedback"
+      >
+        保存反馈
+      </button>
+    </view>
   </block>
 </view>

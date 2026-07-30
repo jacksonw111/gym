@@ -50,7 +50,11 @@ export const createProductionApi = (envId: string): AdminApi => {
       return normalizeAdminData(dashboard, bookings, appeals)
     },
     saveCoach: (input: CoachInput) =>
-      call('adminCrud', { resource: 'coaches', operation: 'save', data: input }),
+      call<{ id: string }>('adminCrud', {
+        resource: 'coaches',
+        operation: 'save',
+        data: input,
+      }),
     setCoachStatus: (id: string, status: CoachStatus) =>
       call('adminCrud', {
         resource: 'coaches',

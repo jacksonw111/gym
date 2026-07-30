@@ -45,4 +45,10 @@ describe('mini program touch targets', () => {
     expectMinimumTouchHeight(styles, '.section-link')
     expect(styles).toMatch(/\.section-link\s*\{[^}]*padding:\s*0\s+\d+rpx/s)
   })
+
+  it('exposes a payment-result query state instead of creating another order', () => {
+    const markup = read('miniprogram/pages/package-checkout/package-checkout.wxml')
+
+    expect(markup).toContain("pendingOrderId ? '查询支付结果'")
+  })
 })

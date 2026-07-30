@@ -72,6 +72,21 @@ describe('后台管理流程', () => {
     expect(within(coachRow).getByRole('button', { name: '启用' })).toBeInTheDocument()
   })
 
+  it('新增教练必须绑定已经登录过小程序的真实用户', async () => {
+    const user = await login()
+    await user.click(screen.getByRole('button', { name: '教练' }))
+    await user.click(screen.getByRole('button', { name: '＋ 新增教练' }))
+
+    await user.selectOptions(screen.getByLabelText('关联小程序用户'), 'member-chencheng')
+    await user.type(screen.getByLabelText('姓名'), '陈教练')
+    await user.type(screen.getByLabelText('手机号'), '18610682231')
+    await user.type(screen.getByLabelText('专长'), '体能训练')
+    await user.click(screen.getByRole('button', { name: '保存' }))
+
+    expect(await screen.findByRole('row', { name: /陈教练/ })).toBeInTheDocument()
+    expect(screen.getByText('教练账号 · member-chencheng')).toBeInTheDocument()
+  })
+
   it('人工调课要求非零整数且原因必填', async () => {
     const user = await login()
     await user.click(screen.getByRole('button', { name: '会员' }))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveEnvironment } from '../../miniprogram/config/env'
+import { getCloudInitializationOptions, resolveEnvironment } from '../../miniprogram/config/env'
 import {
   applyBulkAvailability,
   buildDefaultSchedule,
@@ -54,33 +54,70 @@ const bookedLesson = (id: string, startsAt: string, coachId = 'coach-a'): Lesson
 })
 
 describe('mini program environment protection', () => {
-  it('allows deterministic local data and test payment in development', () => {
+  it('uses the real cloud backend by default in development', () => {
     expect(
       resolveEnvironment({
         mode: 'development',
-        cloudEnvId: '',
+        useDefaultCloudEnvironment: true,
+        useLocalData: false,
+        testPaymentEnabled: false,
+      }),
+    ).toEqual({
+      mode: 'development',
+      useDefaultCloudEnvironment: true,
+      useLocalData: false,
+      testPaymentEnabled: false,
+    })
+  })
+
+  it('only enables mock data when it is explicitly requested', () => {
+    expect(
+      resolveEnvironment({
+        mode: 'development',
+        useDefaultCloudEnvironment: true,
+        useLocalData: true,
         testPaymentEnabled: true,
       }),
     ).toEqual({
       mode: 'development',
-      cloudEnvId: '',
+      useDefaultCloudEnvironment: true,
       useLocalData: true,
       testPaymentEnabled: true,
     })
   })
 
-  it('rejects a production build without CloudBase or with test payment enabled', () => {
+  it('allows the WeChat default cloud environment in production', () => {
+    const environment = resolveEnvironment({
+      mode: 'production',
+      useDefaultCloudEnvironment: true,
+      useLocalData: false,
+      testPaymentEnabled: false,
+    })
+
+    expect(environment).toEqual({
+      mode: 'production',
+      useDefaultCloudEnvironment: true,
+      useLocalData: false,
+      testPaymentEnabled: false,
+    })
+    expect(getCloudInitializationOptions(environment)).toEqual({ traceUser: true })
+  })
+
+  it('rejects production without any CloudBase option or with test payment enabled', () => {
     expect(() =>
       resolveEnvironment({
         mode: 'production',
-        cloudEnvId: '',
+        useDefaultCloudEnvironment: false,
+        useLocalData: false,
         testPaymentEnabled: false,
       }),
-    ).toThrow('生产环境必须配置 CloudBase 环境')
+    ).toThrow('生产环境必须配置 CloudBase 环境或启用微信默认云环境')
     expect(() =>
       resolveEnvironment({
         mode: 'production',
         cloudEnvId: 'cloud-prod',
+        useDefaultCloudEnvironment: false,
+        useLocalData: false,
         testPaymentEnabled: true,
       }),
     ).toThrow('生产环境禁止测试支付')

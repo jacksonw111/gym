@@ -1,3 +1,4 @@
+import { formatShanghaiDate, formatShanghaiHourRange } from '../../models/time-display'
 import { createRequestId, getApi, type LessonView } from '../../services/api'
 
 type TimelineLesson = LessonView & {
@@ -6,10 +7,7 @@ type TimelineLesson = LessonView & {
   hasEnded: boolean
 }
 
-const today = (): string => {
-  const date = new Date()
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
+const today = (): string => formatShanghaiDate(new Date())
 
 Page({
   data: {
@@ -38,11 +36,10 @@ Page({
         loading: false,
         coachName: result.coach.name,
         lessons: result.lessons.map((lesson) => {
-          const startsAt = new Date(lesson.startsAt)
           const endsAt = new Date(lesson.endsAt)
           return {
             ...lesson,
-            timeLabel: `${String(startsAt.getHours()).padStart(2, '0')}:00–${String(endsAt.getHours()).padStart(2, '0')}:00`,
+            timeLabel: formatShanghaiHourRange(lesson.startsAt, lesson.endsAt),
             isNext: lesson.id === nextId,
             hasEnded: endsAt.getTime() <= now,
           }

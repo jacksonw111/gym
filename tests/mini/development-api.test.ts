@@ -4,12 +4,14 @@ import { DevelopmentStore, type StorageAdapter } from '../../miniprogram/service
 
 class MemoryStorage implements StorageAdapter {
   private value: unknown
+  setCount = 0
 
   get(): unknown {
     return this.value
   }
 
   set(value: unknown): void {
+    this.setCount += 1
     this.value = value
   }
 
@@ -30,16 +32,21 @@ describe('development mini program API', () => {
   })
 
   it('test-purchases a package once and binds it to the selected active coach', async () => {
-    const purchased = await api.purchasePackage({
+    const purchase = await api.purchasePackage({
       productId: 'product-strength-12',
       coachId: 'coach-lin',
       requestId: 'buy-1',
     })
-    const repeated = await api.purchasePackage({
+    const repeatedPurchase = await api.purchasePackage({
       productId: 'product-strength-12',
       coachId: 'coach-lin',
       requestId: 'buy-1',
     })
+    if (purchase.status !== 'paid' || repeatedPurchase.status !== 'paid') {
+      throw new Error('expected immediate development payment')
+    }
+    const purchased = purchase.membership
+    const repeated = repeatedPurchase.membership
 
     expect(purchased.id).toBe(repeated.id)
     expect(purchased.coachId).toBe('coach-lin')
@@ -79,6 +86,21 @@ describe('development mini program API', () => {
       availableLessons: membership.availableLessons,
       lockedLessons: membership.lockedLessons,
     })
+  })
+
+  it('rejects booking a slot that has already started', async () => {
+    const home = await api.getMemberHome()
+    const membership = home.memberships[0]
+    if (!membership) throw new Error('expected seeded membership')
+
+    await expect(
+      api.bookLesson({
+        coachId: membership.coachId,
+        membershipPackageId: membership.id,
+        startsAt: '2026-08-01T08:00:00+08:00',
+        requestId: 'past-booking',
+      }),
+    ).rejects.toThrow('只能预约尚未开始的时段')
   })
 
   it('completes an ended lesson once and accepts one appeal in seven days', async () => {
@@ -128,6 +150,40 @@ describe('development mini program API', () => {
     })
   })
 
+  it('persists a completion and its balance change atomically, then saves feedback separately', async () => {
+    const now = () => new Date('2026-08-01T14:00:00+08:00')
+    const storage = new MemoryStorage()
+    const completionApi = new DevelopmentApi(new DevelopmentStore(storage, now), now)
+    const lesson = (await completionApi.listMemberLessons()).upcoming[0]
+    if (!lesson) throw new Error('expected seeded booked lesson')
+    const writesBeforeCompletion = storage.setCount
+
+    const completed = await completionApi.completeLesson({
+      lessonId: lesson.id,
+      requestId: 'atomic-complete',
+    })
+
+    expect(storage.setCount - writesBeforeCompletion).toBe(1)
+    expect(completed.status).toBe('completed')
+
+    const withFeedback = await (
+      completionApi as unknown as {
+        saveFeedback(input: {
+          lessonId: string
+          rating: 5
+          comment: string
+          requestId: string
+        }): Promise<{ feedback?: { rating?: number; comment?: string } }>
+      }
+    ).saveFeedback({
+      lessonId: lesson.id,
+      rating: 5,
+      comment: '状态很好',
+      requestId: 'feedback-1',
+    })
+    expect(withFeedback.feedback).toMatchObject({ rating: 5, comment: '状态很好' })
+  })
+
   it('bulk closes open time but preserves booked coach slots', async () => {
     const result = await api.setCoachDayAvailability({
       date: '2026-08-01',
@@ -138,5 +194,20 @@ describe('development mini program API', () => {
     expect(result.skippedBooked).toBeGreaterThan(0)
     expect(result.slots.some((slot) => slot.locked && slot.open)).toBe(true)
     expect(result.slots.filter((slot) => !slot.open)).toHaveLength(10)
+  })
+
+  it('rolls back an interrupted local mutation without persisting partial state', () => {
+    const storage = new MemoryStorage()
+    const store = new DevelopmentStore(storage, () => new Date('2026-08-01T08:00:00+08:00'))
+    const writesBefore = storage.setCount
+
+    expect(() =>
+      store.update((draft) => {
+        draft.role = 'coach'
+        throw new Error('interrupted')
+      }),
+    ).toThrow('interrupted')
+    expect(store.read().role).toBe('member')
+    expect(storage.setCount).toBe(writesBefore)
   })
 })

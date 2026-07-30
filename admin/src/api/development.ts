@@ -417,19 +417,23 @@ export const developmentApi: AdminApi = {
     const existing = input.id ? data.coaches.find((coach) => coach.id === input.id) : undefined
     if (existing) {
       Object.assign(existing, input)
+      writeData(data)
+      return { id: existing.id }
     } else {
-      data.coaches.push({
+      const coach = {
         id: `coach-${Date.now()}`,
-        userId: `coach-user-${Date.now()}`,
+        userId: input.userId,
         name: input.name,
         phone: input.phone,
         specialty: input.specialty,
-        status: 'active',
+        status: 'active' as const,
         schedule: [],
         history: [],
-      })
+      }
+      data.coaches.push(coach)
+      writeData(data)
+      return { id: coach.id }
     }
-    writeData(data)
   },
   async setCoachStatus(id: string, status: CoachStatus) {
     const data = readData()

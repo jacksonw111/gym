@@ -1,7 +1,7 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import type { AdminApi, AdminData, Coach, CoachInput } from '../api'
 
-const blankCoach: CoachInput = { name: '', phone: '', specialty: '' }
+const blankCoach: CoachInput = { userId: '', name: '', phone: '', specialty: '' }
 
 export function CoachesPage({
   api,
@@ -30,9 +30,10 @@ export function CoachesPage({
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
-    if (!editing?.name || !editing.phone || !editing.specialty) return
-    await api.saveCoach(editing)
+    if (!editing?.userId || !editing.name || !editing.phone || !editing.specialty) return
+    const saved = await api.saveCoach(editing)
     await refresh()
+    setSelectedId(saved.id)
     setEditing(null)
     setMessage('教练资料已保存')
   }
@@ -94,6 +95,25 @@ export function CoachesPage({
             <p className="eyebrow">{editing.id ? 'EDIT COACH' : 'NEW COACH'}</p>
             <h2>{editing.id ? '编辑教练' : '新增教练'}</h2>
           </div>
+          <label>
+            关联小程序用户
+            <select
+              value={editing.userId}
+              onChange={(event) => setEditing({ ...editing, userId: event.target.value })}
+              disabled={Boolean(editing.id)}
+              required
+            >
+              <option value="">请选择已登录会员</option>
+              {data.members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name} · {member.phone || member.id}
+                </option>
+              ))}
+              {editing.userId && !data.members.some((member) => member.id === editing.userId) && (
+                <option value={editing.userId}>{editing.userId}</option>
+              )}
+            </select>
+          </label>
           <label>
             姓名
             <input

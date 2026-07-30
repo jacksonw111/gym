@@ -25,10 +25,41 @@ const product: PackageProduct = {
 }
 
 describe('课包和订单', () => {
+  it('相同requestId只创建一个订单，并保存教练与商品快照', async () => {
+    const store = new MemoryStore({ users: [member], coaches: [coach], products: [product] })
+    const input = {
+      id: 'order-idempotent',
+      requestId: 'purchase-request-1',
+      memberId: member.id,
+      coachId: coach.id,
+      productId: product.id,
+      createdAt: '2026-07-30T00:00:00.000Z',
+    }
+
+    const first = await createOrder(store, input)
+    const repeated = await createOrder(store, { ...input, id: 'must-not-be-used' })
+    const membership = await grantPaidOrder(store, {
+      orderId: first.id,
+      paymentId: 'payment-idempotent',
+      paidAt: '2026-07-30T00:01:00.000Z',
+    })
+
+    expect(repeated.id).toBe(first.id)
+    expect(store.orders).toHaveLength(1)
+    expect(first).toMatchObject({
+      requestId: input.requestId,
+      coachId: coach.id,
+      coachName: coach.name,
+      productSnapshot: { name: product.name },
+    })
+    expect(membership).toMatchObject({ coachId: coach.id, coachName: coach.name })
+  })
+
   it('重复支付通知只发放一个绑定教练并保存商品快照的课包', async () => {
     const store = new MemoryStore({ users: [member], coaches: [coach], products: [product] })
     const order = await createOrder(store, {
       id: 'order-1',
+      requestId: 'purchase-1',
       memberId: member.id,
       coachId: coach.id,
       productId: product.id,
@@ -72,6 +103,7 @@ describe('课包和订单', () => {
     const store = new MemoryStore({ users: [member], coaches: [coach], products: [product] })
     const order = await createOrder(store, {
       id: 'order-1',
+      requestId: 'purchase-1',
       memberId: member.id,
       coachId: coach.id,
       productId: product.id,

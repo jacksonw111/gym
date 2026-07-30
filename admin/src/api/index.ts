@@ -1,12 +1,14 @@
 import { developmentApi } from './development'
+import { resolveAdminEnvironment } from './environment'
 import { createProductionApi } from './production'
 
-const developmentMode =
-  import.meta.env.MODE === 'development' ||
-  import.meta.env.MODE === 'test' ||
-  import.meta.env.VITE_ADMIN_DEVELOPMENT === 'true'
+const environment = resolveAdminEnvironment({
+  mode: import.meta.env.MODE,
+  cloudEnvId: import.meta.env.VITE_CLOUDBASE_ENV_ID ?? '',
+  mockDataEnabled: import.meta.env.VITE_ADMIN_DEVELOPMENT === 'true',
+})
 
-export const adminApi = developmentMode
+export const adminApi = environment.useMockData
   ? developmentApi
-  : createProductionApi(import.meta.env.VITE_CLOUDBASE_ENV_ID)
+  : createProductionApi(environment.cloudEnvId)
 export type * from './types'

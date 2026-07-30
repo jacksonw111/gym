@@ -6,6 +6,7 @@ const basePackage: MembershipPackage = {
   id: 'package-1',
   memberId: 'member-1',
   coachId: 'coach-1',
+  coachName: '教练',
   productId: 'product-1',
   productName: '私教课',
   purchasePriceCents: 500,

@@ -2,3 +2,7 @@ node_modules/
 miniprogram/miniprogram_npm/
 project.private.config.json
 .DS_Store
+.playwright-cli/
+.env.local
+.env.*.local
+cloudfunctions/*/dist/

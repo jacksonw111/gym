@@ -4,6 +4,7 @@ export interface User {
   id: string
   openId: string
   name: string
+  phone?: string
   roles: UserRole[]
 }
 
@@ -11,6 +12,8 @@ export interface Coach {
   id: string
   userId: string
   name: string
+  phone?: string
+  specialty?: string
   status: 'active' | 'inactive'
 }
 
@@ -26,6 +29,7 @@ export interface MembershipPackage {
   id: string
   memberId: string
   coachId: string
+  coachName: string
   productId: string
   productName: string
   purchasePriceCents: number
@@ -38,8 +42,10 @@ export interface MembershipPackage {
 
 export interface Order {
   id: string
+  requestId: string
   memberId: string
   coachId: string
+  coachName: string
   productId: string
   productSnapshot: {
     id: string
@@ -169,6 +175,8 @@ export interface Store {
   nextId(prefix: string): string
 }
 
+export class DomainError extends Error {}
+
 export class MemoryStore implements Store {
   users: User[]
   coaches: Coach[]
@@ -205,8 +213,36 @@ export class MemoryStore implements Store {
       release = resolve
     })
     await previous
+    const snapshot: StoreSeed = structuredClone({
+      users: this.users,
+      coaches: this.coaches,
+      products: this.products,
+      packages: this.packages,
+      orders: this.orders,
+      schedules: this.schedules,
+      lessons: this.lessons,
+      appeals: this.appeals,
+      ledger: this.ledger,
+      admins: this.admins,
+      sessions: this.sessions,
+    })
+    const counter = this.counter
     try {
       return await work()
+    } catch (error) {
+      this.users = snapshot.users ?? []
+      this.coaches = snapshot.coaches ?? []
+      this.products = snapshot.products ?? []
+      this.packages = snapshot.packages ?? []
+      this.orders = snapshot.orders ?? []
+      this.schedules = snapshot.schedules ?? []
+      this.lessons = snapshot.lessons ?? []
+      this.appeals = snapshot.appeals ?? []
+      this.ledger = snapshot.ledger ?? []
+      this.admins = snapshot.admins ?? []
+      this.sessions = snapshot.sessions ?? []
+      this.counter = counter
+      throw error
     } finally {
       release()
     }
@@ -226,7 +262,7 @@ export const assertPackageInvariant = (membership: MembershipPackage): void => {
     membership.availableLessons + membership.lockedLessons + membership.usedLessons !==
       membership.totalLessons
   ) {
-    throw new Error('课时余额不合法')
+    throw new DomainError('课时余额不合法')
   }
 }
 

@@ -1,4 +1,4 @@
-import { type Appeal, appendLedger, assertPackageInvariant, type Store } from './store'
+import { type Appeal, appendLedger, assertPackageInvariant, DomainError, type Store } from './store'
 
 export interface CreateAppealInput {
   memberId: string
@@ -10,17 +10,19 @@ export interface CreateAppealInput {
 
 export const createAppeal = async (store: Store, input: CreateAppealInput): Promise<Appeal> =>
   store.transaction(() => {
-    if (!input.reason.trim()) throw new Error('申诉原因不能为空')
+    if (!input.reason.trim()) throw new DomainError('申诉原因不能为空')
     const lesson = store.lessons.find(
       (item) => item.id === input.lessonId && item.memberId === input.memberId,
     )
     if (!lesson?.consumedAt || !['completed', 'coach_cancelled_consumed'].includes(lesson.status)) {
-      throw new Error('只有已消耗课程可以申诉')
+      throw new DomainError('只有已消耗课程可以申诉')
     }
     const elapsed = new Date(input.now).getTime() - new Date(lesson.consumedAt).getTime()
-    if (elapsed < 0 || elapsed > 7 * 24 * 60 * 60 * 1000) throw new Error('已超过七天申诉期')
+    if (elapsed < 0 || elapsed > 7 * 24 * 60 * 60 * 1000) {
+      throw new DomainError('已超过七天申诉期')
+    }
     if (store.appeals.some((item) => item.lessonId === lesson.id)) {
-      throw new Error('该课程已经提交过申诉')
+      throw new DomainError('该课程已经提交过申诉')
     }
     const appeal: Appeal = {
       id: store.nextId('appeal'),
@@ -46,15 +48,17 @@ export interface DecideAppealInput {
 
 export const decideAppeal = async (store: Store, input: DecideAppealInput): Promise<Appeal> =>
   store.transaction(() => {
-    if (!input.decisionNote.trim()) throw new Error('处理说明不能为空')
+    if (!input.decisionNote.trim()) throw new DomainError('处理说明不能为空')
     const appeal = store.appeals.find((item) => item.id === input.appealId)
-    if (!appeal) throw new Error('申诉不存在')
+    if (!appeal) throw new DomainError('申诉不存在')
     if (appeal.status !== 'pending') return appeal
 
     if (input.decision === 'approve') {
       const lesson = store.lessons.find((item) => item.id === appeal.lessonId)
       const membership = store.packages.find((item) => item.id === lesson?.membershipPackageId)
-      if (!lesson || !membership || membership.usedLessons < 1) throw new Error('已用课时不存在')
+      if (!lesson || !membership || membership.usedLessons < 1) {
+        throw new DomainError('已用课时不存在')
+      }
       membership.availableLessons += 1
       membership.usedLessons -= 1
       assertPackageInvariant(membership)

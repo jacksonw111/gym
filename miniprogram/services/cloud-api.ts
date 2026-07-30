@@ -1,5 +1,11 @@
-import { applyBulkAvailability, sortCoachLessons } from '../models/coach'
+import {
+  applyBulkAvailability,
+  mergeRemoteSchedule,
+  type RemoteScheduleSlot,
+  sortCoachLessons,
+} from '../models/coach'
 import { getLessonActions } from '../models/member'
+import { formatShanghaiDate } from '../models/time-display'
 import type {
   ApiRequest,
   ApiResponse,
@@ -23,6 +29,9 @@ import type {
   MemberHomeView,
   MemberLessonsView,
   PurchasePackageInput,
+  PurchaseResult,
+  QueryPurchaseInput,
+  SaveFeedbackInput,
   SessionView,
   SetDayAvailabilityInput,
   SetSlotAvailabilityInput,
@@ -37,8 +46,10 @@ interface PaymentParameters {
   paySign: string
 }
 
-interface PurchaseOrder {
-  orderId: string
+interface PurchaseResponse {
+  order: {
+    id: string
+  }
   payment: PaymentParameters
 }
 
@@ -50,13 +61,14 @@ type BootstrapLesson = Lesson & {
 
 interface BootstrapOrder {
   id: string
+  status: 'pending' | 'paid'
   membershipId?: string
-  status: string
 }
 
 interface BootstrapData {
   profile: User
-  role: UserRole
+  roles: UserRole[]
+  activeRole: UserRole
   packages: PackageProduct[]
   coaches: Coach[]
   memberships: MembershipPackage[]
@@ -64,6 +76,20 @@ interface BootstrapData {
   appeals: Appeal[]
   orders?: BootstrapOrder[]
 }
+
+interface WechatAdapter {
+  cloud: {
+    callFunction(input: { name: string; data: ApiRequest<unknown> }): Promise<{ result?: unknown }>
+  }
+  requestPayment(
+    input: PaymentParameters & {
+      success(): void
+      fail(error: unknown): void
+    },
+  ): void
+}
+
+const getWechat = (): WechatAdapter => (globalThis as unknown as { wx: WechatAdapter }).wx
 
 const mutationRequestId = (): string =>
   `cloud-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -77,26 +103,21 @@ const statusText = {
 }
 
 export class CloudApi implements GymApi {
-  private currentRole: UserRole = 'member'
-  private roleInitialized = false
+  private activeRole?: UserRole
 
   async getSession(): Promise<SessionView> {
     const data = await this.bootstrap()
-    if (!this.roleInitialized) {
-      this.currentRole = data.role
-      this.roleInitialized = true
-    }
-    return { user: data.profile, role: this.currentRole }
+    return { user: data.profile, role: data.activeRole }
   }
 
   async switchRole(role: UserRole): Promise<SessionView> {
-    const data = await this.bootstrap()
-    if (!data.profile.roles.includes(role)) {
+    const current = await this.bootstrap()
+    if (!current.profile.roles.includes(role)) {
       throw new Error('当前账号没有该身份')
     }
-    this.currentRole = role
-    this.roleInitialized = true
-    return { user: data.profile, role }
+    this.activeRole = role
+    const confirmed = await this.bootstrap()
+    return { user: confirmed.profile, role: confirmed.activeRole }
   }
 
   async getMemberHome(): Promise<MemberHomeView> {
@@ -110,8 +131,8 @@ export class CloudApi implements GymApi {
     }
   }
 
-  async purchasePackage(input: PurchasePackageInput): Promise<MembershipPackage> {
-    const order = await this.call<PurchaseOrder, Omit<PurchasePackageInput, 'requestId'>>(
+  async purchasePackage(input: PurchasePackageInput): Promise<PurchaseResult> {
+    const purchase = await this.call<PurchaseResponse, Omit<PurchasePackageInput, 'requestId'>>(
       'purchase',
       {
         productId: input.productId,
@@ -119,43 +140,61 @@ export class CloudApi implements GymApi {
       },
       input.requestId,
     )
-    await new Promise<void>((resolve, reject) => {
-      wx.requestPayment({
-        ...order.payment,
-        success: () => resolve(),
-        fail: (error) => reject(error),
-      })
-    })
 
-    const refreshed = await this.bootstrap()
-    const recordedOrder = refreshed.orders?.find((candidate) => candidate.id === order.orderId)
-    const membership = recordedOrder?.membershipId
-      ? refreshed.memberships.find((candidate) => candidate.id === recordedOrder.membershipId)
-      : [...refreshed.memberships]
-          .reverse()
-          .find(
-            (candidate) =>
-              candidate.productId === input.productId && candidate.coachId === input.coachId,
-          )
-    if (!membership) {
-      throw new Error('支付结果确认中，请稍后回到首页刷新')
+    try {
+      await new Promise<void>((resolve, reject) => {
+        getWechat().requestPayment({
+          ...purchase.payment,
+          success: () => resolve(),
+          fail: (error) => reject(error),
+        })
+      })
+    } catch {
+      return {
+        status: 'pending',
+        orderId: purchase.order.id,
+        requestId: input.requestId,
+      }
     }
-    return membership
+
+    return this.queryPurchase({
+      orderId: purchase.order.id,
+      requestId: input.requestId,
+    })
+  }
+
+  async queryPurchase(input: QueryPurchaseInput): Promise<PurchaseResult> {
+    const refreshed = await this.bootstrap(input.requestId)
+    const order = refreshed.orders?.find((candidate) => candidate.id === input.orderId)
+    if (order?.status !== 'paid' || !order.membershipId) {
+      return { status: 'pending', orderId: input.orderId, requestId: input.requestId }
+    }
+    const membership = refreshed.memberships.find(
+      (candidate) => candidate.id === order.membershipId,
+    )
+    if (!membership) {
+      return { status: 'pending', orderId: input.orderId, requestId: input.requestId }
+    }
+    return { status: 'paid', membership }
   }
 
   async getCoachSchedule(coachId: string, date: string): Promise<CoachScheduleView> {
-    const [data, slots] = await Promise.all([
+    const [data, remoteSlots] = await Promise.all([
       this.bootstrap(),
-      this.call<CoachScheduleView['slots'], { coachId: string; date: string }>('getSchedule', {
-        coachId,
-        date,
-      }),
+      this.call<RemoteScheduleSlot[], { coachId: string; date: string; includeClosed: boolean }>(
+        'getSchedule',
+        { coachId, date, includeClosed: true },
+      ),
     ])
     const coach = data.coaches.find((candidate) => candidate.id === coachId)
     if (!coach) {
       throw new Error('教练不存在')
     }
-    return { coach, date, slots }
+    return {
+      coach,
+      date,
+      slots: mergeRemoteSchedule(date, remoteSlots, data.lessons, coachId),
+    }
   }
 
   bookLesson(input: BookLessonInput): Promise<Lesson> {
@@ -196,24 +235,20 @@ export class CloudApi implements GymApi {
     return this.call('cancelLesson', { lessonId: input.lessonId }, input.requestId)
   }
 
-  async completeLesson(input: CompleteLessonInput): Promise<Lesson> {
-    const lesson = await this.call<Lesson, { lessonId: string }>(
-      'completeLesson',
-      { lessonId: input.lessonId },
+  completeLesson(input: CompleteLessonInput): Promise<Lesson> {
+    return this.call('completeLesson', { lessonId: input.lessonId }, input.requestId)
+  }
+
+  saveFeedback(input: SaveFeedbackInput): Promise<Lesson> {
+    return this.call(
+      'saveFeedback',
+      {
+        lessonId: input.lessonId,
+        ...(input.rating ? { rating: input.rating } : {}),
+        ...(input.comment?.trim() ? { comment: input.comment.trim() } : {}),
+      },
       input.requestId,
     )
-    if (input.rating || input.comment?.trim()) {
-      await this.call(
-        'saveFeedback',
-        {
-          lessonId: input.lessonId,
-          ...(input.rating ? { rating: input.rating } : {}),
-          ...(input.comment?.trim() ? { comment: input.comment.trim() } : {}),
-        },
-        mutationRequestId(),
-      )
-    }
-    return lesson
   }
 
   submitAppeal(input: SubmitAppealInput): Promise<Appeal> {
@@ -235,7 +270,9 @@ export class CloudApi implements GymApi {
       throw new Error('当前账号不是教练')
     }
     const lessons = data.lessons
-      .filter((lesson) => lesson.coachId === coach.id && lesson.startsAt.slice(0, 10) === date)
+      .filter(
+        (lesson) => lesson.coachId === coach.id && formatShanghaiDate(lesson.startsAt) === date,
+      )
       .map((lesson) => this.toLessonView(data, lesson))
     return { coach, lessons: sortCoachLessons(lessons) }
   }
@@ -303,8 +340,18 @@ export class CloudApi implements GymApi {
     return this.call('completeLesson', { lessonId: input.lessonId }, input.requestId)
   }
 
-  private bootstrap(): Promise<BootstrapData> {
-    return this.call('bootstrap', {})
+  private async bootstrap(requestId?: string): Promise<BootstrapData> {
+    const data = await this.call<BootstrapData, { activeRole?: UserRole }>(
+      'bootstrap',
+      this.activeRole ? { activeRole: this.activeRole } : {},
+      requestId,
+    )
+    const activeRole = data.activeRole ?? data.roles?.[0] ?? data.profile.roles[0]
+    if (!activeRole) {
+      throw new Error('当前账号没有可用身份')
+    }
+    this.activeRole = activeRole
+    return { ...data, activeRole }
   }
 
   private async call<TData, TPayload>(
@@ -313,7 +360,10 @@ export class CloudApi implements GymApi {
     requestId = mutationRequestId(),
   ): Promise<TData> {
     const request: ApiRequest<TPayload> = { action, requestId, payload }
-    const response = await wx.cloud.callFunction({ name: 'gym-api', data: request })
+    const response = await getWechat().cloud.callFunction({
+      name: 'gym-api',
+      data: request,
+    })
     const result = response.result as ApiResponse<TData>
     if (!result.ok) {
       throw new Error(result.error.message)
@@ -326,14 +376,18 @@ export class CloudApi implements GymApi {
     const membership = data.memberships.find(
       (candidate) => candidate.id === lesson.membershipPackageId,
     )
+    const ownMemberLesson = lesson.memberId === data.profile.id
     return {
       ...lesson,
       coachName: lesson.coachName ?? coach?.name ?? '教练',
-      memberName: lesson.memberName ?? data.profile.name,
-      memberPhone: lesson.memberPhone ?? data.profile.phone ?? '未留联系方式',
+      memberName: lesson.memberName ?? (ownMemberLesson ? data.profile.name : '会员信息未提供'),
+      memberPhone:
+        lesson.memberPhone ??
+        (ownMemberLesson ? (data.profile.phone ?? '会员信息未提供') : '会员信息未提供'),
       packageName: membership?.productName ?? '训练课包',
       statusText: statusText[lesson.status],
       ...getLessonActions(lesson, new Date()),
+      canSaveFeedback: lesson.status === 'completed' && !lesson.feedback,
       ...(data.appeals.find((appeal) => appeal.lessonId === lesson.id)
         ? { appeal: data.appeals.find((appeal) => appeal.lessonId === lesson.id) }
         : {}),

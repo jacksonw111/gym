@@ -21,6 +21,8 @@ Page({
     selectedCoachId: '',
     submitting: false,
     testPayment: false,
+    pendingOrderId: '',
+    purchaseRequestId: '',
   },
 
   onLoad() {
@@ -51,10 +53,18 @@ Page({
   },
 
   selectProduct(event: WechatMiniprogram.BaseEvent) {
+    if (this.data.pendingOrderId) {
+      wx.showToast({ title: '当前订单正在确认，请先查询结果', icon: 'none' })
+      return
+    }
     this.setData({ selectedProductId: event.currentTarget.dataset.id as string })
   },
 
   selectCoach(event: WechatMiniprogram.BaseEvent) {
+    if (this.data.pendingOrderId) {
+      wx.showToast({ title: '当前订单正在确认，请先查询结果', icon: 'none' })
+      return
+    }
     this.setData({ selectedCoachId: event.currentTarget.dataset.id as string })
   },
 
@@ -63,17 +73,34 @@ Page({
       wx.showToast({ title: '正在处理，请勿重复提交', icon: 'none' })
       return
     }
-    if (!this.data.selectedProductId || !this.data.selectedCoachId) {
+    if (!this.data.pendingOrderId && (!this.data.selectedProductId || !this.data.selectedCoachId)) {
       wx.showToast({ title: '请选择课包和教练', icon: 'none' })
       return
     }
+    const requestId = this.data.purchaseRequestId || createRequestId('purchase')
+    if (!this.data.purchaseRequestId) {
+      this.setData({ purchaseRequestId: requestId })
+    }
     this.setData({ submitting: true })
     try {
-      await getApi().purchasePackage({
-        productId: this.data.selectedProductId,
-        coachId: this.data.selectedCoachId,
-        requestId: createRequestId('purchase'),
-      })
+      const result = this.data.pendingOrderId
+        ? await getApi().queryPurchase({
+            orderId: this.data.pendingOrderId,
+            requestId,
+          })
+        : await getApi().purchasePackage({
+            productId: this.data.selectedProductId,
+            coachId: this.data.selectedCoachId,
+            requestId,
+          })
+      if (result.status === 'pending') {
+        this.setData({
+          pendingOrderId: result.orderId,
+          purchaseRequestId: result.requestId,
+        })
+        wx.showToast({ title: '支付结果确认中，可稍后查询', icon: 'none' })
+        return
+      }
       wx.showToast({
         title: this.data.testPayment ? '测试购买成功' : '支付成功',
         icon: 'success',

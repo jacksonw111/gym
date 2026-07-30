@@ -1,4 +1,6 @@
+import { LatestRequestGate } from '../../models/latest-request'
 import { availablePackagesForCoach, buildPublicSlot } from '../../models/member'
+import { formatShanghaiDate, getShanghaiDateParts } from '../../models/time-display'
 import { createRequestId, getApi } from '../../services/api'
 import type { MembershipPackage } from '../../shared/contracts'
 
@@ -16,18 +18,19 @@ interface SlotRow {
   time: string
 }
 
-const dateString = (date: Date): string =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+const DAY_MILLISECONDS = 24 * 60 * 60 * 1000
+const scheduleRequests = new LatestRequestGate()
 
 const weekDates = (): DateOption[] => {
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const now = Date.now()
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date()
-    date.setDate(date.getDate() + index)
+    const date = new Date(now + index * DAY_MILLISECONDS)
+    const parts = getShanghaiDateParts(date)
     return {
-      date: dateString(date),
-      day: String(date.getDate()),
-      weekday: index === 0 ? '今天' : (weekdays[date.getDay()] ?? ''),
+      date: formatShanghaiDate(date),
+      day: String(parts.day),
+      weekday: index === 0 ? '今天' : (weekdays[parts.weekday] ?? ''),
     }
   })
 }
@@ -59,14 +62,19 @@ Page({
   },
 
   async load() {
+    const date = this.data.selectedDate
+    const request = scheduleRequests.begin(date)
     this.setData({ loading: true, error: '' })
     try {
       const api = getApi()
       const [session, home, schedule] = await Promise.all([
         api.getSession(),
         api.getMemberHome(),
-        api.getCoachSchedule(this.data.coachId, this.data.selectedDate),
+        api.getCoachSchedule(this.data.coachId, date),
       ])
+      if (!scheduleRequests.isCurrent(request, this.data.selectedDate)) {
+        return
+      }
       const memberships = availablePackagesForCoach(home.memberships, this.data.coachId)
       this.setData({
         loading: false,
@@ -83,6 +91,9 @@ Page({
         })),
       })
     } catch (error) {
+      if (!scheduleRequests.isCurrent(request, this.data.selectedDate)) {
+        return
+      }
       this.setData({
         loading: false,
         error: error instanceof Error ? error.message : '课程表加载失败',

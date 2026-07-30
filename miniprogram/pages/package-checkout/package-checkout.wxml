@@ -64,7 +64,9 @@
 <view class="checkout-bar">
   <view class="checkout-bar__copy">
     <text>课包将永久绑定所选教练</text>
-    <text class="muted">{{testPayment ? '开发测试支付' : '微信支付'}}</text>
+    <text class="muted">
+      {{pendingOrderId ? '原订单正在确认，不会重复支付' : testPayment ? '开发测试支付' : '微信支付'}}
+    </text>
   </view>
   <button
     class="primary-button checkout-bar__button"
@@ -72,6 +74,6 @@
     disabled="{{submitting}}"
     bindtap="submit"
   >
-    {{submitting ? '处理中' : '确认购买'}}
+    {{submitting ? '处理中' : pendingOrderId ? '查询支付结果' : '确认购买'}}
   </button>
 </view>

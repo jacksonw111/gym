@@ -3,6 +3,7 @@ import { init } from '@cloudbase/node-sdk'
 import { createAppeal, decideAppeal } from './appeals'
 import type { Actor } from './auth'
 import {
+  autoCompleteDueLessons,
   bookLesson,
   cancelLessonByCoach,
   cancelLessonByMember,
@@ -12,7 +13,15 @@ import {
 import { adjustBalance, createOrder } from './packages'
 import { createDevPayment, createWechatPaymentProvider, type PaymentEnvironment } from './payment'
 import { hashAdminPassword } from './seed'
-import type { Admin, Coach, Product, ScheduleSlot, Store, User } from './store'
+import {
+  type Admin,
+  type Coach,
+  DomainError,
+  type Product,
+  type ScheduleSlot,
+  type Store,
+  type User,
+} from './store'
 import { CloudBaseStore, type CloudDatabase } from './store-cloudbase'
 
 export interface ApiRequest {
@@ -21,6 +30,7 @@ export interface ApiRequest {
   payload: unknown
   identity?: { openId: string }
   authToken?: string
+  internalToken?: string
 }
 
 export type ApiResponse =
@@ -60,10 +70,59 @@ const getCurrentUser = (store: Store, request: ApiRequest): User => {
   return user
 }
 
+const ensureCurrentUser = async (store: Store, request: ApiRequest): Promise<User> => {
+  const openId = request.identity?.openId
+  if (!openId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
+  const existing = store.users.find((item) => item.openId === openId)
+  if (existing) return existing
+  return store.transaction(() => {
+    const duplicate = store.users.find((item) => item.openId === openId)
+    if (duplicate) return duplicate
+    const user: User = {
+      id: store.nextId('user'),
+      openId,
+      name: '新会员',
+      roles: ['member'],
+    }
+    store.users.push(user)
+    return user
+  })
+}
+
+const defaultScheduleSlots = (store: Store, coachId: string, date: string): ScheduleSlot[] => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00+08:00`))) {
+    throw new ApiError('INVALID_REQUEST', '日期格式不正确')
+  }
+  const slots: ScheduleSlot[] = []
+  for (let hour = 10; hour < 21; hour += 1) {
+    const hourText = String(hour).padStart(2, '0')
+    const nextHourText = String(hour + 1).padStart(2, '0')
+    const startsAt = `${date}T${hourText}:00:00+08:00`
+    const existing = store.schedules.find(
+      (item) => item.coachId === coachId && item.startsAt === startsAt,
+    )
+    slots.push(
+      existing ?? {
+        id: `slot-${coachId}-${date}-${hourText}`,
+        coachId,
+        startsAt,
+        endsAt: `${date}T${nextHourText}:00:00+08:00`,
+        open: true,
+      },
+    )
+  }
+  return slots
+}
+
 const getCurrentCoach = (store: Store, request: ApiRequest): Coach => {
   const user = getCurrentUser(store, request)
+  if (!user.roles.includes('coach')) {
+    throw new ApiError('UNAUTHORIZED', '当前账号没有教练权限')
+  }
   const coach = store.coaches.find((item) => item.userId === user.id)
-  if (!coach) throw new ApiError('UNAUTHORIZED', '当前账号不是教练')
+  if (coach?.status !== 'active') {
+    throw new ApiError('UNAUTHORIZED', '教练账号不存在或已停用')
+  }
   return coach
 }
 
@@ -97,7 +156,23 @@ const adminDashboard = (store: Store) => ({
   bookings: store.lessons,
   appeals: store.appeals,
   orders: store.orders,
+  ledger: store.ledger,
+  schedules: store.schedules,
 })
+
+const errorResponse = (error: unknown): ApiResponse => {
+  if (error instanceof ApiError) {
+    return { ok: false, error: { code: error.code, message: error.message } }
+  }
+  if (error instanceof DomainError) {
+    return { ok: false, error: { code: 'DOMAIN_ERROR', message: error.message } }
+  }
+  console.error('gym-api internal error', error)
+  return {
+    ok: false,
+    error: { code: 'INTERNAL_ERROR', message: '操作失败，请稍后重试' },
+  }
+}
 
 const mutateAdminResource = (
   store: Store,
@@ -122,10 +197,19 @@ const mutateAdminResource = (
   const existingIndex = collection.findIndex((item) => item.id === id)
   if (operation === 'get') {
     const existing = collection[existingIndex]
-    if (!existing) throw new Error('记录不存在')
+    if (!existing) throw new DomainError('记录不存在')
     return existing
   }
   if (operation === 'save') {
+    if (resource === 'coaches') {
+      const userId = requiredString(value, 'userId')
+      const user = store.users.find((item) => item.id === userId)
+      if (!user) throw new DomainError('关联的小程序用户不存在')
+      const duplicate = store.coaches.find((item) => item.userId === userId && item.id !== id)
+      if (duplicate) throw new DomainError('该小程序用户已经绑定教练')
+      if (!user.roles.includes('coach')) user.roles.push('coach')
+      if (existingIndex < 0) value.status = 'active'
+    }
     const record = { ...structuredClone(value), id } as unknown as User | Coach | Product
     if (existingIndex < 0) collection.push(record)
     else {
@@ -138,14 +222,14 @@ const mutateAdminResource = (
   }
   if (operation === 'setStatus') {
     const existing = collection[existingIndex]
-    if (!existing) throw new Error('记录不存在')
-    if (!('status' in existing)) throw new Error('该资源不支持状态变更')
+    if (!existing) throw new DomainError('记录不存在')
+    if (!('status' in existing)) throw new DomainError('该资源不支持状态变更')
     const status = requiredString(value, 'status')
     if (
       (resource === 'coaches' && !['active', 'inactive'].includes(status)) ||
       (resource === 'packages' && !['published', 'unpublished'].includes(status))
     ) {
-      throw new Error('状态值不合法')
+      throw new DomainError('状态值不合法')
     }
     Object.assign(existing, { status })
     return existing
@@ -182,7 +266,7 @@ export const createRouter = (
       const now = nowProvider()
       switch (request.action) {
         case 'bootstrap': {
-          const currentUser = getCurrentUser(store, request)
+          const currentUser = await ensureCurrentUser(store, request)
           const requestedRole = payload.activeRole
           const activeRole =
             (requestedRole === 'member' || requestedRole === 'coach') &&
@@ -197,6 +281,18 @@ export const createRouter = (
           if (activeRole === 'coach' && !coach) {
             throw new ApiError('UNAUTHORIZED', '教练资料不存在')
           }
+          const coachLessons = coach
+            ? store.lessons
+                .filter((item) => item.coachId === coach.id)
+                .map((lesson) => {
+                  const member = store.users.find((item) => item.id === lesson.memberId)
+                  return {
+                    ...lesson,
+                    memberName: member?.name ?? '',
+                    memberPhone: member?.phone ?? '',
+                  }
+                })
+            : []
           const actor = {
             kind: activeRole,
             id: activeRole === 'coach' ? (coach as Coach).id : currentUser.id,
@@ -211,9 +307,9 @@ export const createRouter = (
               packages: store.products.filter((item) => item.status === 'published'),
               coaches: store.coaches.filter((item) => item.status === 'active'),
               memberships: store.packages.filter((item) => item.memberId === currentUser.id),
-              lessons: store.lessons.filter((item) =>
-                coach ? item.coachId === coach.id : item.memberId === currentUser.id,
-              ),
+              lessons: coach
+                ? coachLessons
+                : store.lessons.filter((item) => item.memberId === currentUser.id),
               appeals: store.appeals.filter((item) =>
                 coach
                   ? store.lessons.some(
@@ -223,8 +319,15 @@ export const createRouter = (
               ),
               coach: {
                 schedule: coach ? store.schedules.filter((item) => item.coachId === coach.id) : [],
-                lessons: coach ? store.lessons.filter((item) => item.coachId === coach.id) : [],
+                lessons: coachLessons,
               },
+              orders: store.orders
+                .filter((item) => item.memberId === currentUser.id)
+                .map((item) => ({
+                  id: item.id,
+                  status: item.status,
+                  membershipId: item.packageId,
+                })),
             },
           }
         }
@@ -232,18 +335,70 @@ export const createRouter = (
           return { ok: true, data: store.products.filter((item) => item.status === 'published') }
         case 'listCoaches':
           return { ok: true, data: store.coaches.filter((item) => item.status === 'active') }
-        case 'getSchedule':
+        case 'getSchedule': {
+          const coachId = requiredString(payload, 'coachId')
+          const coach = store.coaches.find(
+            (item) => item.id === coachId && item.status === 'active',
+          )
+          if (!coach) throw new ApiError('NOT_FOUND', '教练不存在或已停用')
+          const requestedDate = typeof payload.date === 'string' ? payload.date : undefined
+          if (requestedDate) {
+            await store.transaction(() => {
+              const slots = defaultScheduleSlots(store, coachId, requestedDate)
+              for (const slot of slots) {
+                if (!store.schedules.some((item) => item.id === slot.id)) {
+                  store.schedules.push(slot)
+                }
+              }
+            })
+          }
+          const currentUser = request.identity?.openId
+            ? store.users.find((item) => item.openId === request.identity?.openId)
+            : undefined
+          const currentCoach = currentUser?.roles.includes('coach')
+            ? store.coaches.find(
+                (item) =>
+                  item.userId === currentUser.id && item.id === coachId && item.status === 'active',
+              )
+            : undefined
           return {
             ok: true,
-            data: store.schedules.filter(
-              (item) =>
-                item.coachId === requiredString(payload, 'coachId') &&
-                (payload.includeClosed === true || item.open),
-            ),
+            data: store.schedules
+              .filter(
+                (item) =>
+                  item.coachId === coachId &&
+                  (!requestedDate || item.startsAt.startsWith(requestedDate)) &&
+                  (payload.includeClosed === true || item.open),
+              )
+              .map((slot) => {
+                const lesson = store.lessons.find(
+                  (item) =>
+                    item.coachId === slot.coachId &&
+                    item.startsAt === slot.startsAt &&
+                    item.status === 'booked',
+                )
+                const member = currentCoach
+                  ? store.users.find((item) => item.id === lesson?.memberId)
+                  : undefined
+                return {
+                  ...slot,
+                  occupied: Boolean(lesson),
+                  ...(lesson && lesson.memberId === currentUser?.id ? { lessonId: lesson.id } : {}),
+                  ...(currentCoach && lesson
+                    ? {
+                        lessonId: lesson.id,
+                        memberName: member?.name ?? '',
+                        memberPhone: member?.phone ?? '',
+                      }
+                    : {}),
+                }
+              }),
           }
+        }
         case 'purchase': {
           const member = getCurrentUser(store, request)
           const order = await createOrder(store, {
+            requestId: request.requestId,
             memberId: member.id,
             coachId: requiredString(payload, 'coachId'),
             productId: requiredString(payload, 'productId'),
@@ -337,17 +492,49 @@ export const createRouter = (
         }
         case 'setSchedule': {
           const coach = getCurrentCoach(store, request)
+          const date = requiredString(payload, 'date')
           const slots = payload.slots
           if (!Array.isArray(slots)) throw new ApiError('INVALID_REQUEST', '排班内容格式不正确')
           return {
             ok: true,
             data: await store.transaction(() => {
-              const ownSlots = slots.map((slot) => ({
-                ...(slot as Omit<ScheduleSlot, 'coachId'>),
-                coachId: coach.id,
-              }))
-              store.schedules.push(...ownSlots)
-              return ownSlots
+              const updatedSlots = slots.map((slot) => {
+                const value = asObject(slot)
+                const startsAt = requiredString(value, 'startsAt')
+                const endsAt = requiredString(value, 'endsAt')
+                const open = value.open
+                const match = startsAt.match(
+                  new RegExp(`^${date}T(\\d{2}):00:00(?:\\.000)?\\+08:00$`),
+                )
+                const hour = match ? Number(match[1]) : Number.NaN
+                if (
+                  (open !== true && open !== false) ||
+                  !match ||
+                  hour < 10 ||
+                  hour >= 21 ||
+                  Date.parse(endsAt) - Date.parse(startsAt) !== 60 * 60 * 1000
+                ) {
+                  throw new ApiError('INVALID_REQUEST', '排班时段必须是 10:00—21:00 的整点一小时')
+                }
+                const existing = store.schedules.find(
+                  (item) => item.coachId === coach.id && item.startsAt === startsAt,
+                )
+                if (existing) {
+                  existing.endsAt = endsAt
+                  existing.open = open
+                  return existing
+                }
+                const created: ScheduleSlot = {
+                  id: `slot-${coach.id}-${date}-${String(hour).padStart(2, '0')}`,
+                  coachId: coach.id,
+                  startsAt,
+                  endsAt,
+                  open,
+                }
+                store.schedules.push(created)
+                return created
+              })
+              return updatedSlots
             }),
           }
         }
@@ -436,13 +623,7 @@ export const createRouter = (
           throw new ApiError('UNKNOWN_ACTION', `不支持的操作：${request.action}`)
       }
     } catch (error) {
-      return {
-        ok: false,
-        error: {
-          code: error instanceof ApiError ? error.code : 'DOMAIN_ERROR',
-          message: error instanceof Error ? error.message : '操作失败，请稍后重试',
-        },
-      }
+      return errorResponse(error)
     }
   }
 }
@@ -463,18 +644,54 @@ export const createCloudHandler = (
 ) => {
   const router = createRouter(store, environment)
   return async (event: ApiRequest): Promise<ApiResponse> => {
-    await store.load?.()
-    const serverIdentity = await getServerIdentity()
-    return router({
-      ...event,
-      identity: serverIdentity?.openId ? { openId: serverIdentity.openId } : undefined,
-    })
+    try {
+      await store.load?.()
+      const serverIdentity = await getServerIdentity()
+      return router({
+        ...event,
+        identity: serverIdentity?.openId ? { openId: serverIdentity.openId } : undefined,
+      })
+    } catch (error) {
+      return errorResponse(error)
+    }
+  }
+}
+
+export const createInternalSchedulerHandler = (
+  store: Store,
+  expectedToken: string | undefined,
+  nowProvider: () => string = () => new Date().toISOString(),
+) => {
+  return async (providedToken: string | undefined): Promise<ApiResponse> => {
+    if (!expectedToken || providedToken !== expectedToken) {
+      return {
+        ok: false,
+        error: { code: 'UNAUTHORIZED', message: '内部定时任务认证失败' },
+      }
+    }
+    try {
+      const completedLessonIds = await autoCompleteDueLessons(store, nowProvider())
+      return { ok: true, data: { completedLessonIds } }
+    } catch (error) {
+      return errorResponse(error)
+    }
   }
 }
 
 export const main = async (event: ApiRequest): Promise<ApiResponse> => {
   const app = init({ env: process.env.TCB_ENV })
   const store = new CloudBaseStore(app.database() as unknown as CloudDatabase)
+  if (event.action === '__internalAutoCompleteLessons') {
+    try {
+      await store.load()
+    } catch (error) {
+      return errorResponse(error)
+    }
+    return createInternalSchedulerHandler(
+      store,
+      process.env.INTERNAL_SCHEDULER_TOKEN,
+    )(event.internalToken)
+  }
   const paymentEndpoint = process.env.WECHAT_PAYMENT_CREATE_URL
   const paymentApiToken = process.env.WECHAT_PAYMENT_API_TOKEN
   const handler = createCloudHandler(

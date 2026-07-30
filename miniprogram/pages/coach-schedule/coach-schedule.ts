@@ -1,4 +1,6 @@
 import type { CoachScheduleSlot } from '../../models/coach'
+import { LatestRequestGate } from '../../models/latest-request'
+import { formatShanghaiDate, getShanghaiDateParts } from '../../models/time-display'
 import { createRequestId, getApi } from '../../services/api'
 
 interface DateOption {
@@ -7,18 +9,19 @@ interface DateOption {
   day: string
 }
 
-const toDate = (date: Date): string =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+const DAY_MILLISECONDS = 24 * 60 * 60 * 1000
+const scheduleRequests = new LatestRequestGate()
 
 const dates = (): DateOption[] => {
   const weekday = ['日', '一', '二', '三', '四', '五', '六']
+  const now = Date.now()
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date()
-    date.setDate(date.getDate() + index)
+    const date = new Date(now + index * DAY_MILLISECONDS)
+    const parts = getShanghaiDateParts(date)
     return {
-      date: toDate(date),
-      label: index === 0 ? '今天' : `周${weekday[date.getDay()]}`,
-      day: String(date.getDate()),
+      date: formatShanghaiDate(date),
+      label: index === 0 ? '今天' : `周${weekday[parts.weekday]}`,
+      day: String(parts.day),
     }
   })
 }
@@ -43,11 +46,19 @@ Page({
   },
 
   async load() {
+    const date = this.data.selectedDate
+    const request = scheduleRequests.begin(date)
     this.setData({ loading: true, error: '' })
     try {
-      const result = await getApi().getOwnCoachSchedule(this.data.selectedDate)
+      const result = await getApi().getOwnCoachSchedule(date)
+      if (!scheduleRequests.isCurrent(request, this.data.selectedDate)) {
+        return
+      }
       this.setData({ loading: false, slots: result.slots })
     } catch (error) {
+      if (!scheduleRequests.isCurrent(request, this.data.selectedDate)) {
+        return
+      }
       this.setData({
         loading: false,
         error: error instanceof Error ? error.message : '排班加载失败',
