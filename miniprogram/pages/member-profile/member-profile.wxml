@@ -13,9 +13,22 @@
     <text>{{error}}</text>
     <button class="secondary-button" bindtap="load">重试</button>
   </view>
+  <view wx:elif="{{!authenticated}}" class="guest-profile surface">
+    <view class="guest-profile__mark">PR</view>
+    <text class="eyebrow">PURUI MEMBER</text>
+    <view class="guest-profile__title">登录后管理你的训练</view>
+    <text class="muted">查看课包、历史课程与申诉记录，并在预约前完成会员识别。</text>
+    <button class="primary-button guest-profile__button" bindtap="login">微信授权登录</button>
+  </view>
   <block wx:else>
     <view class="identity">
-      <view class="identity__mark">{{name}}</view>
+      <image
+        wx:if="{{avatarUrl}}"
+        class="identity__avatar"
+        src="{{avatarUrl}}"
+        mode="aspectFill"
+       />
+      <view wx:else class="identity__mark">{{name}}</view>
       <text class="eyebrow">MEMBER / 会员</text>
       <view class="identity__name">{{name}}</view>
       <text class="muted">{{phone}}</text>

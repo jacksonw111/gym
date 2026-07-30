@@ -1,4 +1,5 @@
 import { getEnvironment } from '../../config/env'
+import { loginPageUrl } from '../../models/auth'
 import { formatPrice } from '../../models/member'
 import { createRequestId, getApi } from '../../services/api'
 import type { Coach, PackageProduct } from '../../shared/contracts'
@@ -75,6 +76,19 @@ Page({
     }
     if (!this.data.pendingOrderId && (!this.data.selectedProductId || !this.data.selectedCoachId)) {
       wx.showToast({ title: '请选择课包和教练', icon: 'none' })
+      return
+    }
+    try {
+      const session = await getApi().getSession()
+      if (!session.authenticated) {
+        wx.navigateTo({ url: loginPageUrl('checkout') })
+        return
+      }
+    } catch (error) {
+      wx.showToast({
+        title: error instanceof Error ? error.message : '登录状态读取失败',
+        icon: 'none',
+      })
       return
     }
     const requestId = this.data.purchaseRequestId || createRequestId('purchase')

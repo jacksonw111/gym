@@ -17,8 +17,10 @@
   <block wx:else>
     <view class="hero">
       <text class="eyebrow">PURUI TRAINING</text>
-      <view class="hero__greeting">{{userName}}，今天也要稳稳发力。</view>
-      <view class="balance">
+      <view class="hero__greeting">
+        {{authenticated ? userName + '，今天也要稳稳发力。' : '欢迎来到普瑞健身。'}}
+      </view>
+      <view wx:if="{{authenticated}}" class="balance">
         <text class="balance__number">{{totalAvailable}}</text>
         <view>
           <text class="balance__unit">节可预约</text>
@@ -27,7 +29,7 @@
       </view>
     </view>
     <view
-      wx:if="{{nextLesson}}"
+      wx:if="{{authenticated && nextLesson}}"
       class="next surface"
       data-id="{{nextLesson.id}}"
       bindtap="openLesson"
@@ -39,32 +41,34 @@
       </view>
       <text class="next__arrow">→</text>
     </view>
-    <view class="section-heading">
-      <text class="section-title">我的训练权益</text>
-      <button class="section-link" bindtap="openCheckout">继续购买</button>
-    </view>
-    <view wx:if="{{memberships.length}}">
-      <view
-        wx:for="{{memberships}}"
-        wx:key="id"
-        class="membership"
-        data-id="{{item.coachId}}"
-        bindtap="openCoach"
-      >
-        <view class="membership__main">
-          <text class="membership__name">{{item.productName}}</text>
-          <text class="muted">绑定 {{item.coachName}} 教练 · {{item.price}}</text>
-        </view>
-        <view class="membership__balance">
-          <text>{{item.availableLessons}}</text>
-          <text class="membership__unit">节</text>
+    <block wx:if="{{authenticated}}">
+      <view class="section-heading">
+        <text class="section-title">我的训练权益</text>
+        <button class="section-link" bindtap="openCheckout">继续购买</button>
+      </view>
+      <view wx:if="{{memberships.length}}">
+        <view
+          wx:for="{{memberships}}"
+          wx:key="id"
+          class="membership"
+          data-id="{{item.coachId}}"
+          bindtap="openCoach"
+        >
+          <view class="membership__main">
+            <text class="membership__name">{{item.productName}}</text>
+            <text class="muted">绑定 {{item.coachName}} 教练 · {{item.price}}</text>
+          </view>
+          <view class="membership__balance">
+            <text>{{item.availableLessons}}</text>
+            <text class="membership__unit">节</text>
+          </view>
         </view>
       </view>
-    </view>
-    <view wx:else class="empty-strip">
-      <text>还没有训练课包。选一位合拍的教练，从第一节开始。</text>
-      <button class="primary-button" bindtap="openCheckout">选择课包与教练</button>
-    </view>
+      <view wx:else class="empty-strip">
+        <text>还没有训练课包。选一位合拍的教练，从第一节开始。</text>
+        <button class="primary-button" bindtap="openCheckout">选择课包与教练</button>
+      </view>
+    </block>
     <view class="section-title">在馆教练</view>
     <scroll-view class="coach-row" scroll-x enable-flex>
       <view

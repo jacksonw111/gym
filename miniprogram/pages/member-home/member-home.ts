@@ -26,6 +26,7 @@ Page({
   data: {
     loading: true,
     error: '',
+    authenticated: false,
     userName: '',
     products: [] as ProductRow[],
     coaches: [] as CoachRow[],
@@ -52,6 +53,7 @@ Page({
         result.coaches.find((coach) => coach.id === coachId)?.name ?? '教练'
       this.setData({
         loading: false,
+        authenticated: result.authenticated,
         userName: result.user?.name ?? '',
         products: result.products.map((product) => ({
           ...product,

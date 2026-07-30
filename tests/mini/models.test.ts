@@ -4,6 +4,7 @@ import {
   getEnvironment,
   resolveEnvironment,
 } from '../../miniprogram/config/env'
+import { loginPageUrl, registrationReady } from '../../miniprogram/models/auth'
 import {
   applyBulkAvailability,
   buildDefaultSchedule,
@@ -147,6 +148,19 @@ describe('mini program environment protection', () => {
         testPaymentEnabled: true,
       }),
     ).toThrow('生产环境禁止测试支付')
+  })
+})
+
+describe('member login flow', () => {
+  it('only enables phone authorization after avatar and nickname are ready', () => {
+    expect(registrationReady('', '陈澄')).toBe(false)
+    expect(registrationReady('/tmp/avatar.jpg', '')).toBe(false)
+    expect(registrationReady('/tmp/avatar.jpg', ' 陈澄 ')).toBe(true)
+  })
+
+  it('builds explicit return destinations for profile and checkout', () => {
+    expect(loginPageUrl('profile')).toBe('/pages/member-login/member-login?returnTo=profile')
+    expect(loginPageUrl('checkout')).toBe('/pages/member-login/member-login?returnTo=checkout')
   })
 })
 

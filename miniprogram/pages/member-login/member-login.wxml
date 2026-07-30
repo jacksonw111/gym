@@ -1,0 +1,42 @@
+<navigation-bar title="会员登录" color="#242321" background="#f4f0e8" />
+<view class="login-page">
+  <view class="login-intro">
+    <text class="eyebrow">PURUI MEMBER</text>
+    <view class="login-title">建立你的训练档案</view>
+    <text class="muted">资料仅用于会员识别、预约联系和教练服务。只有你主动授权后才会创建会员。</text>
+  </view>
+  <view class="login-form surface">
+    <text class="field-label">01 · 微信头像</text>
+    <button
+      class="avatar-button"
+      open-type="chooseAvatar"
+      bindchooseavatar="chooseAvatar"
+    >
+      <image
+        wx:if="{{avatarPath}}"
+        class="avatar-preview"
+        src="{{avatarPath}}"
+        mode="aspectFill"
+       />
+      <view wx:else class="avatar-placeholder">选择头像</view>
+    </button>
+    <text class="field-label">02 · 微信昵称</text>
+    <input
+      class="nickname-input"
+      type="nickname"
+      value="{{nickname}}"
+      placeholder="填写你的昵称"
+      bindinput="changeNickname"
+     />
+    <text class="field-label">03 · 联系手机号</text>
+    <button
+      class="primary-button phone-button"
+      open-type="getPhoneNumber"
+      disabled="{{!ready || submitting}}"
+      loading="{{submitting}}"
+      bindgetphonenumber="authorizePhone"
+    >{{submitting ? '正在建立档案' : '授权手机号并登录'}}</button>
+    <text class="privacy-note">微信会在你点击上方按钮后显示手机号授权确认。</text>
+    <text wx:if="{{error}}" class="login-error">{{error}}</text>
+  </view>
+</view>

@@ -3,6 +3,7 @@
     "pages/member-home/member-home",
     "pages/member-lessons/member-lessons",
     "pages/member-profile/member-profile",
+    "pages/member-login/member-login",
     "pages/package-checkout/package-checkout",
     "pages/coach-detail/coach-detail",
     "pages/lesson-detail/lesson-detail",

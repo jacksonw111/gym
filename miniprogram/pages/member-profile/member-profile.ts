@@ -1,3 +1,4 @@
+import { loginPageUrl } from '../../models/auth'
 import { getApi } from '../../services/api'
 import type { MembershipPackage } from '../../shared/contracts'
 
@@ -5,6 +6,8 @@ Page({
   data: {
     loading: true,
     error: '',
+    authenticated: false,
+    avatarUrl: '',
     name: '',
     phone: '',
     dualRole: false,
@@ -24,6 +27,8 @@ Page({
       const user = result.user
       this.setData({
         loading: false,
+        authenticated: result.authenticated,
+        avatarUrl: user?.avatarUrl ?? '',
         name: user?.name ?? '',
         phone: user?.phone ?? '未填写',
         dualRole: user?.roles.includes('coach') ?? false,
@@ -39,6 +44,10 @@ Page({
         error: error instanceof Error ? error.message : '资料加载失败',
       })
     }
+  },
+
+  login() {
+    wx.navigateTo({ url: loginPageUrl('profile') })
   },
 
   async switchToCoach() {
