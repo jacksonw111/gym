@@ -26,6 +26,7 @@ Page({
         getApi().getSession(),
         getApi().getCoachDashboard(today()),
       ])
+      if (!session.authenticated) throw new Error('请先登录')
       this.setData({
         loading: false,
         name: dashboard.coach.name,

@@ -21,11 +21,12 @@ Page({
     this.setData({ loading: true, error: '' })
     try {
       const result = await getApi().getMemberHome()
+      const user = result.user
       this.setData({
         loading: false,
-        name: result.user.name,
-        phone: result.user.phone ?? '未填写',
-        dualRole: result.user.roles.includes('coach'),
+        name: user?.name ?? '',
+        phone: user?.phone ?? '未填写',
+        dualRole: user?.roles.includes('coach') ?? false,
         memberships: result.memberships,
         totalAvailable: result.memberships.reduce(
           (total, membership) => total + membership.availableLessons,

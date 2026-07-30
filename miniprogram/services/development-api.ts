@@ -16,6 +16,7 @@ import type {
   PurchasePackageInput,
   PurchaseResult,
   QueryPurchaseInput,
+  RegisterMemberInput,
   SaveFeedbackInput,
   SessionView,
   SetDayAvailabilityInput,
@@ -51,7 +52,16 @@ export class DevelopmentApi implements GymApi {
 
   async getSession(): Promise<SessionView> {
     const state = this.store.read()
-    return { user: state.user, role: state.role }
+    return { authenticated: true, user: state.user, role: state.role }
+  }
+
+  async registerMember(input: RegisterMemberInput): Promise<SessionView> {
+    const next = this.store.update((draft) => {
+      draft.user.name = input.name.trim()
+      draft.user.avatarUrl = input.avatarUrl
+      draft.user.phone = draft.user.phone ?? '13800000000'
+    })
+    return { authenticated: true, user: next.user, role: next.role }
   }
 
   async switchRole(role: UserRole): Promise<SessionView> {
@@ -62,12 +72,13 @@ export class DevelopmentApi implements GymApi {
     const next = this.store.update((draft) => {
       draft.role = role
     })
-    return { user: next.user, role: next.role }
+    return { authenticated: true, user: next.user, role: next.role }
   }
 
   async getMemberHome(): Promise<MemberHomeView> {
     const state = this.store.read()
     return {
+      authenticated: true,
       user: state.user,
       products: state.products.filter((product) => product.status === 'published'),
       coaches: state.coaches.filter((coach) => coach.status === 'active'),

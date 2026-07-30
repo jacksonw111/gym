@@ -57,6 +57,7 @@ const bookedLesson: Lesson = {
 }
 
 const bootstrap = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+  authenticated: true,
   actor: { kind: 'member', id: 'user-1' },
   profile: user,
   roles: user.roles,
@@ -99,6 +100,56 @@ afterEach(() => {
 })
 
 describe('production CloudApi adapter', () => {
+  it('returns a guest session without manufacturing a user', async () => {
+    installWechat(async () =>
+      ok(
+        bootstrap({
+          authenticated: false,
+          actor: null,
+          profile: null,
+          roles: [],
+          activeRole: null,
+          memberships: [],
+          lessons: [],
+        }),
+      ),
+    )
+    const api = new CloudApi()
+
+    await expect(api.getSession()).resolves.toEqual({ authenticated: false })
+    await expect(api.getMemberHome()).resolves.toMatchObject({
+      authenticated: false,
+      user: undefined,
+    })
+  })
+
+  it('sends only cloud-authorized registration fields', async () => {
+    const { cloudCall } = installWechat(async ({ data }) => {
+      if (data.action === 'registerMember') return ok(user)
+      return ok(bootstrap())
+    })
+    const api = new CloudApi()
+
+    await api.registerMember({
+      name: '陈澄',
+      avatarUrl: 'cloud://test/avatar.jpg',
+      phoneCloudId: 'phone-cloud-id',
+      requestId: 'register-1',
+    })
+
+    expect(cloudCall).toHaveBeenCalledWith({
+      name: 'gym-api',
+      data: expect.objectContaining({
+        action: 'registerMember',
+        payload: {
+          name: '陈澄',
+          avatarUrl: 'cloud://test/avatar.jpg',
+          phoneCloudId: 'phone-cloud-id',
+        },
+      }),
+    })
+  })
+
   it('preserves the real WeChat cloud error message when the request never reaches the function', async () => {
     installWechat(async () => {
       throw {

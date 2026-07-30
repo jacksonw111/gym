@@ -31,6 +31,7 @@ import type {
   PurchasePackageInput,
   PurchaseResult,
   QueryPurchaseInput,
+  RegisterMemberInput,
   SaveFeedbackInput,
   SessionView,
   SetDayAvailabilityInput,
@@ -66,9 +67,10 @@ interface BootstrapOrder {
 }
 
 interface BootstrapData {
-  profile: User
+  authenticated: boolean
+  profile: User | null
   roles: UserRole[]
-  activeRole: UserRole
+  activeRole: UserRole | null
   packages: PackageProduct[]
   coaches: Coach[]
   memberships: MembershipPackage[]
@@ -107,23 +109,52 @@ export class CloudApi implements GymApi {
 
   async getSession(): Promise<SessionView> {
     const data = await this.bootstrap()
-    return { user: data.profile, role: data.activeRole }
+    if (!data.authenticated || !data.profile) return { authenticated: false }
+    const role = data.activeRole ?? data.profile.roles[0]
+    if (!role) throw new Error('当前账号没有可用身份')
+    return { authenticated: true, user: data.profile, role }
+  }
+
+  async registerMember(input: RegisterMemberInput): Promise<SessionView> {
+    await this.call(
+      'registerMember',
+      {
+        name: input.name,
+        avatarUrl: input.avatarUrl,
+        phoneCloudId: input.phoneCloudId,
+      },
+      input.requestId,
+    )
+    const data = await this.bootstrap(input.requestId)
+    const profile = this.requireProfile(data)
+    return {
+      authenticated: true,
+      user: profile,
+      role: data.activeRole ?? profile.roles[0] ?? 'member',
+    }
   }
 
   async switchRole(role: UserRole): Promise<SessionView> {
     const current = await this.bootstrap()
-    if (!current.profile.roles.includes(role)) {
+    const profile = this.requireProfile(current)
+    if (!profile.roles.includes(role)) {
       throw new Error('当前账号没有该身份')
     }
     this.activeRole = role
     const confirmed = await this.bootstrap()
-    return { user: confirmed.profile, role: confirmed.activeRole }
+    const confirmedProfile = this.requireProfile(confirmed)
+    return {
+      authenticated: true,
+      user: confirmedProfile,
+      role: confirmed.activeRole ?? role,
+    }
   }
 
   async getMemberHome(): Promise<MemberHomeView> {
     const data = await this.bootstrap()
     return {
-      user: data.profile,
+      authenticated: data.authenticated,
+      user: data.profile ?? undefined,
       products: data.packages,
       coaches: data.coaches,
       memberships: data.memberships,
@@ -211,8 +242,9 @@ export class CloudApi implements GymApi {
 
   async listMemberLessons(): Promise<MemberLessonsView> {
     const data = await this.bootstrap()
+    const profile = this.requireProfile(data)
     const views = data.lessons
-      .filter((lesson) => lesson.memberId === data.profile.id)
+      .filter((lesson) => lesson.memberId === profile.id)
       .map((lesson) => this.toLessonView(data, lesson))
     return {
       upcoming: sortCoachLessons(views.filter((lesson) => lesson.status === 'booked')),
@@ -265,7 +297,8 @@ export class CloudApi implements GymApi {
 
   async getCoachDashboard(date: string): Promise<CoachDashboardView> {
     const data = await this.bootstrap()
-    const coach = data.coaches.find((candidate) => candidate.userId === data.profile.id)
+    const profile = this.requireProfile(data)
+    const coach = data.coaches.find((candidate) => candidate.userId === profile.id)
     if (!coach) {
       throw new Error('当前账号不是教练')
     }
@@ -279,7 +312,8 @@ export class CloudApi implements GymApi {
 
   async getOwnCoachSchedule(date: string): Promise<CoachScheduleView> {
     const data = await this.bootstrap()
-    const coach = data.coaches.find((candidate) => candidate.userId === data.profile.id)
+    const profile = this.requireProfile(data)
+    const coach = data.coaches.find((candidate) => candidate.userId === profile.id)
     if (!coach) {
       throw new Error('当前账号不是教练')
     }
@@ -346,11 +380,8 @@ export class CloudApi implements GymApi {
       this.activeRole ? { activeRole: this.activeRole } : {},
       requestId,
     )
-    const activeRole = data.activeRole ?? data.roles?.[0] ?? data.profile.roles[0]
-    if (!activeRole) {
-      throw new Error('当前账号没有可用身份')
-    }
-    this.activeRole = activeRole
+    const activeRole = data.activeRole ?? data.roles?.[0] ?? data.profile?.roles[0] ?? null
+    if (activeRole) this.activeRole = activeRole
     return { ...data, activeRole }
   }
 
@@ -381,18 +412,19 @@ export class CloudApi implements GymApi {
   }
 
   private toLessonView(data: BootstrapData, lesson: BootstrapLesson): LessonView {
+    const profile = this.requireProfile(data)
     const coach = data.coaches.find((candidate) => candidate.id === lesson.coachId)
     const membership = data.memberships.find(
       (candidate) => candidate.id === lesson.membershipPackageId,
     )
-    const ownMemberLesson = lesson.memberId === data.profile.id
+    const ownMemberLesson = lesson.memberId === profile.id
     return {
       ...lesson,
       coachName: lesson.coachName ?? coach?.name ?? '教练',
-      memberName: lesson.memberName ?? (ownMemberLesson ? data.profile.name : '会员信息未提供'),
+      memberName: lesson.memberName ?? (ownMemberLesson ? profile.name : '会员信息未提供'),
       memberPhone:
         lesson.memberPhone ??
-        (ownMemberLesson ? (data.profile.phone ?? '会员信息未提供') : '会员信息未提供'),
+        (ownMemberLesson ? (profile.phone ?? '会员信息未提供') : '会员信息未提供'),
       packageName: membership?.productName ?? '训练课包',
       statusText: statusText[lesson.status],
       ...getLessonActions(lesson, new Date()),
@@ -401,5 +433,10 @@ export class CloudApi implements GymApi {
         ? { appeal: data.appeals.find((appeal) => appeal.lessonId === lesson.id) }
         : {}),
     }
+  }
+
+  private requireProfile(data: BootstrapData): User {
+    if (!data.authenticated || !data.profile) throw new Error('请先登录')
+    return data.profile
   }
 }

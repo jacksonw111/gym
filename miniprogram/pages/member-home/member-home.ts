@@ -43,7 +43,7 @@ Page({
     try {
       const api = getApi()
       const [session, result] = await Promise.all([api.getSession(), api.getMemberHome()])
-      if (session.role === 'coach') {
+      if (session.authenticated && session.role === 'coach') {
         wx.redirectTo({ url: '/pages/coach-dashboard/coach-dashboard' })
         return
       }
@@ -52,7 +52,7 @@ Page({
         result.coaches.find((coach) => coach.id === coachId)?.name ?? '教练'
       this.setData({
         loading: false,
-        userName: result.user.name,
+        userName: result.user?.name ?? '',
         products: result.products.map((product) => ({
           ...product,
           price: formatPrice(product.priceCents),

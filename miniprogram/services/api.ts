@@ -9,13 +9,13 @@ import type {
   UserRole,
 } from '../shared/contracts'
 
-export interface SessionView {
-  user: User
-  role: UserRole
-}
+export type SessionView =
+  | { authenticated: false }
+  | { authenticated: true; user: User; role: UserRole }
 
 export interface MemberHomeView {
-  user: User
+  authenticated: boolean
+  user?: User
   products: PackageProduct[]
   coaches: Coach[]
   memberships: MembershipPackage[]
@@ -115,8 +115,16 @@ export interface CoachCancelInput extends LessonMutationInput {
   consumeLesson: boolean
 }
 
+export interface RegisterMemberInput {
+  name: string
+  avatarUrl: string
+  phoneCloudId: string
+  requestId: string
+}
+
 export interface GymApi {
   getSession(): Promise<SessionView>
+  registerMember(input: RegisterMemberInput): Promise<SessionView>
   switchRole(role: UserRole): Promise<SessionView>
   getMemberHome(): Promise<MemberHomeView>
   purchasePackage(input: PurchasePackageInput): Promise<PurchaseResult>

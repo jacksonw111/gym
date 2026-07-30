@@ -85,7 +85,7 @@ Page({
         slots: schedule.slots.map((slot) => ({
           ...buildPublicSlot({
             ...slot,
-            viewerMemberId: session.user.id,
+            viewerMemberId: session.authenticated ? session.user.id : '',
           }),
           time: slot.label,
         })),
