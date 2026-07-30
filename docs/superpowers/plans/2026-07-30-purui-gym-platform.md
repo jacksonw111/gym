@@ -534,6 +534,9 @@ git commit -m "feat: add coach workspace and schedule"
 ## Task 9: Establish the React admin shell and authentication
 
 **Files:**
+- Modify: `package.json`
+- Modify: `package-lock.json`
+- Modify: `biome.json`
 - Create: `admin/index.html`
 - Create: `admin/vite.config.ts`
 - Create: `admin/tsconfig.json`
@@ -568,9 +571,11 @@ Run: `rtk npx vitest run admin/src/app.test.tsx`
 
 Expected: FAIL because the admin application does not exist.
 
-- [ ] **Step 3: Add Vite, React, test dependencies, and entry**
+- [ ] **Step 3: Add Vite, React, test dependencies, entry, and admin checks**
 
 Use React 19 `createRoot`, Vite’s React TypeScript plugin, and a `happy-dom` Vitest environment. Add `admin:dev` and `admin:build` scripts at the repository root.
+
+Add `admin:typecheck` backed by `admin/tsconfig.json` and `admin:lint` backed by root Biome coverage of the admin source tree. In this same task, wire both commands into the root `check` and `verify` flows. Do not add either command to those flows before the admin directory and configuration exist.
 
 - [ ] **Step 4: Implement the auth gate and API selection**
 

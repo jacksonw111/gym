@@ -72,7 +72,6 @@ interface LessonBase {
   membershipPackageId: string
   startsAt: string
   endsAt: string
-  feedback?: LessonFeedback
 }
 
 interface BookedLesson extends LessonBase {
@@ -103,6 +102,7 @@ interface CompletedLesson extends LessonBase {
   status: 'completed'
   completionSource: LessonCompletionSource
   consumedAt: string
+  feedback?: LessonFeedback
 }
 
 export type Lesson =

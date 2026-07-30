@@ -4,6 +4,7 @@
     "includes": [
       "miniprogram/**/*.ts",
       "tests/**/*.ts",
+      "cloudfunctions/**/*.ts",
       "typings/**/*.d.ts",
       "vitest.config.ts",
       "*.json",

@@ -57,6 +57,17 @@ describe('status-specific contracts', () => {
       status: 'coach_cancelled_consumed',
       consumedAt: '2026-08-01T09:30:00+08:00',
     }
+    const completedWithFeedback: Lesson = {
+      ...lessonBase,
+      status: 'completed',
+      completionSource: 'coach',
+      consumedAt: '2026-08-01T11:00:00+08:00',
+      feedback: {
+        rating: 5,
+        comment: '训练安排清晰',
+        submittedAt: '2026-08-01T11:05:00+08:00',
+      },
+    }
 
     // @ts-expect-error completed lessons require a completion source
     const completedWithoutSource: Lesson = {
@@ -93,15 +104,53 @@ describe('status-specific contracts', () => {
       status: 'coach_cancelled_released',
       consumedAt: '2026-08-01T09:30:00+08:00',
     }
+    const bookedWithFeedback: Lesson = {
+      ...lessonBase,
+      status: 'booked',
+      // @ts-expect-error booked lessons cannot contain feedback
+      feedback: {
+        submittedAt: '2026-08-01T09:30:00+08:00',
+      },
+    }
+    const memberCancellationWithFeedback: Lesson = {
+      ...lessonBase,
+      status: 'member_cancelled',
+      // @ts-expect-error member-cancelled lessons cannot contain feedback
+      feedback: {
+        submittedAt: '2026-08-01T09:30:00+08:00',
+      },
+    }
+    const releasedCancellationWithFeedback: Lesson = {
+      ...lessonBase,
+      status: 'coach_cancelled_released',
+      // @ts-expect-error released coach cancellations cannot contain feedback
+      feedback: {
+        submittedAt: '2026-08-01T09:30:00+08:00',
+      },
+    }
+    const consumedCancellationWithFeedback: Lesson = {
+      ...lessonBase,
+      status: 'coach_cancelled_consumed',
+      consumedAt: '2026-08-01T09:30:00+08:00',
+      // @ts-expect-error consumed coach cancellations cannot contain feedback
+      feedback: {
+        submittedAt: '2026-08-01T09:30:00+08:00',
+      },
+    }
 
     expect(completed.status).toBe('completed')
     expect(consumedCancellation.status).toBe('coach_cancelled_consumed')
+    expect(completedWithFeedback.feedback?.rating).toBe(5)
     expect(completedWithoutSource.status).toBe('completed')
     expect(completedWithoutConsumption.status).toBe('completed')
     expect(bookedWithCompletionSource.status).toBe('booked')
     expect(bookedWithConsumption.status).toBe('booked')
     expect(consumedCancellationWithoutTimestamp.status).toBe('coach_cancelled_consumed')
     expect(releasedCancellationWithConsumption.status).toBe('coach_cancelled_released')
+    expect(bookedWithFeedback.status).toBe('booked')
+    expect(memberCancellationWithFeedback.status).toBe('member_cancelled')
+    expect(releasedCancellationWithFeedback.status).toBe('coach_cancelled_released')
+    expect(consumedCancellationWithFeedback.status).toBe('coach_cancelled_consumed')
   })
 
   it('requires appeal fields according to the appeal status', () => {
