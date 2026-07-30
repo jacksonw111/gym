@@ -1,5 +1,17 @@
 export type UserRole = 'member' | 'coach'
 
+export interface User {
+  id: string
+  openId: string
+  name: string
+  avatarUrl?: string
+  phone?: string
+  roles: UserRole[]
+}
+
+export const hasRole = (user: Pick<User, 'roles'>, role: UserRole): boolean =>
+  user.roles.includes(role)
+
 export type CoachStatus = 'active' | 'inactive'
 
 export interface Coach {
