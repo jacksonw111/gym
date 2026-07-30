@@ -4,6 +4,7 @@ export interface User {
   id: string
   openId: string
   name: string
+  avatarUrl?: string
   phone?: string
   roles: UserRole[]
 }

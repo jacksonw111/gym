@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { init } from '@cloudbase/node-sdk'
+import * as wxCloud from 'wx-server-sdk'
 import { createAppeal, decideAppeal } from './appeals'
 import type { Actor } from './auth'
 import {
@@ -12,6 +13,7 @@ import {
 } from './lessons'
 import { adjustBalance, createOrder } from './packages'
 import { createDevPayment, createWechatPaymentProvider, type PaymentEnvironment } from './payment'
+import { phoneNumberFromOpenData } from './phone'
 import { hashAdminPassword } from './seed'
 import {
   type Admin,
@@ -24,6 +26,8 @@ import {
   type User,
 } from './store'
 import { CloudBaseStore, type CloudDatabase } from './store-cloudbase'
+
+wxCloud.init({ env: wxCloud.DYNAMIC_CURRENT_ENV as unknown as string })
 
 export interface ApiRequest {
   action: string
@@ -48,6 +52,10 @@ class ApiError extends Error {
 }
 
 type ObjectPayload = Record<string, unknown>
+
+export interface GymEnvironment extends PaymentEnvironment {
+  resolvePhoneNumber?: (cloudId: string) => Promise<string>
+}
 
 const asObject = (payload: unknown): ObjectPayload => {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -239,7 +247,7 @@ const handleAdminCrud = (store: Store, payload: ObjectPayload): unknown => {
 
 export const createRouter = (
   store: Store,
-  environment: PaymentEnvironment,
+  environment: GymEnvironment,
   nowProvider: () => string = () => new Date().toISOString(),
 ) => {
   return async (request: ApiRequest): Promise<ApiResponse> => {
@@ -339,6 +347,44 @@ export const createRouter = (
           return { ok: true, data: store.products.filter((item) => item.status === 'published') }
         case 'listCoaches':
           return { ok: true, data: store.coaches.filter((item) => item.status === 'active') }
+        case 'registerMember': {
+          const openId = request.identity?.openId
+          if (!openId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
+          const name = requiredString(payload, 'name').trim()
+          const avatarUrl = requiredString(payload, 'avatarUrl')
+          const phoneCloudId = requiredString(payload, 'phoneCloudId')
+          if (name.length < 1 || name.length > 32) {
+            throw new ApiError('INVALID_REQUEST', '昵称长度应为 1—32 个字符')
+          }
+          if (!avatarUrl.startsWith('cloud://')) {
+            throw new ApiError('INVALID_REQUEST', '头像必须来自当前云存储')
+          }
+          if (!environment.resolvePhoneNumber) {
+            throw new ApiError('SERVICE_UNAVAILABLE', '手机号授权服务未配置')
+          }
+          const phone = await environment.resolvePhoneNumber(phoneCloudId)
+          const user = await store.transaction(() => {
+            const existing = store.users.find((item) => item.openId === openId)
+            if (existing) {
+              existing.name = name
+              existing.avatarUrl = avatarUrl
+              existing.phone = phone
+              if (!existing.roles.includes('member')) existing.roles.push('member')
+              return existing
+            }
+            const created: User = {
+              id: store.nextId('user'),
+              openId,
+              name,
+              avatarUrl,
+              phone,
+              roles: ['member'],
+            }
+            store.users.push(created)
+            return created
+          })
+          return { ok: true, data: user }
+        }
         case 'getSchedule': {
           const coachId = requiredString(payload, 'coachId')
           const coach = store.coaches.find(
@@ -643,7 +689,7 @@ type IdentityProvider = () =>
 
 export const createCloudHandler = (
   store: LoadableStore,
-  environment: PaymentEnvironment,
+  environment: GymEnvironment,
   getServerIdentity: IdentityProvider,
 ) => {
   const router = createRouter(store, environment)
@@ -710,6 +756,8 @@ export const main = async (event: ApiRequest): Promise<ApiResponse> => {
               apiToken: paymentApiToken,
             })
           : undefined,
+      resolvePhoneNumber: async (cloudId) =>
+        phoneNumberFromOpenData(await wxCloud.getOpenData({ list: [cloudId] })),
     },
     () => app.auth().getUserInfo(),
   )

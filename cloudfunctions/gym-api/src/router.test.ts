@@ -109,6 +109,50 @@ describe('CloudBase action router', () => {
     expect(store.users.some((item) => item.openId === 'guest-openid')).toBe(false)
   })
 
+  it('registerMember 只创建一个真实会员并允许重复授权更新', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const resolvePhoneNumber = vi.fn(async () => '13800000000')
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+      resolvePhoneNumber,
+    })
+    const request = {
+      action: 'registerMember',
+      requestId: 'register-1',
+      payload: {
+        name: '陈澄',
+        avatarUrl: 'cloud://test-env/avatar/member.jpg',
+        phoneCloudId: 'phone-cloud-id',
+      },
+      identity: { openId: 'registered-openid' },
+    }
+
+    const first = await router(request)
+    expect(first).toMatchObject({
+      ok: true,
+      data: {
+        name: '陈澄',
+        avatarUrl: 'cloud://test-env/avatar/member.jpg',
+        phone: '13800000000',
+        roles: ['member'],
+      },
+    })
+
+    const second = await router({
+      ...request,
+      requestId: 'register-2',
+      payload: { ...request.payload, name: '陈澄新昵称' },
+    })
+
+    expect(second).toMatchObject({
+      ok: true,
+      data: { name: '陈澄新昵称', phone: '13800000000' },
+    })
+    expect(store.users.filter((user) => user.openId === 'registered-openid')).toHaveLength(1)
+    expect(resolvePhoneNumber).toHaveBeenCalledTimes(2)
+  })
+
   it('getSchedule 为真实教练日期首次访问创建默认开放的十一个时段', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const router = createRouter(store, {
