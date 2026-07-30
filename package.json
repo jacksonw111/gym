@@ -4,10 +4,16 @@
   "private": true,
   "description": "拼饭微信小程序",
   "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "admin:dev": "vite --config admin/vite.config.ts",
+    "admin:build": "vite build --config admin/vite.config.ts",
+    "cloud:test": "vitest run cloudfunctions",
     "format": "biome format --write . && prettier --write \"miniprogram/**/*.{wxml,less}\"",
     "lint": "biome lint . && stylelint \"miniprogram/**/*.less\"",
     "typecheck": "tsc --noEmit",
-    "check": "biome check . && prettier --check \"miniprogram/**/*.{wxml,less}\" && stylelint \"miniprogram/**/*.less\" && tsc --noEmit"
+    "check": "biome check . && prettier --check \"miniprogram/**/*.{wxml,less}\" && stylelint \"miniprogram/**/*.less\" && tsc --noEmit",
+    "verify": "npm run check && npm run test"
   },
   "dependencies": {
     "@vant/weapp": "1.11.7"
@@ -21,6 +27,7 @@
     "prettier-plugin-mp": "2.5.0",
     "stylelint": "17.14.1",
     "stylelint-config-standard-less": "4.1.0",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
   }
 }
