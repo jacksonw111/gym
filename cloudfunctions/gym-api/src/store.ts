@@ -159,6 +159,8 @@ export interface StoreSeed {
   sessions?: AdminSession[]
 }
 
+export const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
 export interface Store {
   users: User[]
   coaches: Coach[]
@@ -193,17 +195,17 @@ export class MemoryStore implements Store {
   private queue: Promise<void> = Promise.resolve()
 
   constructor(seed: StoreSeed = {}) {
-    this.users = structuredClone(seed.users ?? [])
-    this.coaches = structuredClone(seed.coaches ?? [])
-    this.products = structuredClone(seed.products ?? [])
-    this.packages = structuredClone(seed.packages ?? [])
-    this.orders = structuredClone(seed.orders ?? [])
-    this.schedules = structuredClone(seed.schedules ?? [])
-    this.lessons = structuredClone(seed.lessons ?? [])
-    this.appeals = structuredClone(seed.appeals ?? [])
-    this.ledger = structuredClone(seed.ledger ?? [])
-    this.admins = structuredClone(seed.admins ?? [])
-    this.sessions = structuredClone(seed.sessions ?? [])
+    this.users = cloneJson(seed.users ?? [])
+    this.coaches = cloneJson(seed.coaches ?? [])
+    this.products = cloneJson(seed.products ?? [])
+    this.packages = cloneJson(seed.packages ?? [])
+    this.orders = cloneJson(seed.orders ?? [])
+    this.schedules = cloneJson(seed.schedules ?? [])
+    this.lessons = cloneJson(seed.lessons ?? [])
+    this.appeals = cloneJson(seed.appeals ?? [])
+    this.ledger = cloneJson(seed.ledger ?? [])
+    this.admins = cloneJson(seed.admins ?? [])
+    this.sessions = cloneJson(seed.sessions ?? [])
   }
 
   async transaction<T>(work: () => Promise<T> | T): Promise<T> {
@@ -213,7 +215,7 @@ export class MemoryStore implements Store {
       release = resolve
     })
     await previous
-    const snapshot: StoreSeed = structuredClone({
+    const snapshot: StoreSeed = cloneJson({
       users: this.users,
       coaches: this.coaches,
       products: this.products,

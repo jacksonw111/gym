@@ -3,6 +3,8 @@ import { bookLesson } from './lessons'
 import { MemoryStore } from './store'
 import { CloudBaseStore, type CloudDatabase } from './store-cloudbase'
 
+const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
 class FakeDocument {
   constructor(
     private readonly documents: Map<string, Record<string, unknown>>,
@@ -14,7 +16,7 @@ class FakeDocument {
   }
 
   async set(data: Record<string, unknown>) {
-    this.documents.set(this.id, structuredClone(data))
+    this.documents.set(this.id, copy(data))
   }
 
   async remove() {
@@ -75,7 +77,7 @@ class FakeDatabase implements CloudDatabase {
       for (const [name, documents] of this.collections) {
         transaction.collections.set(
           name,
-          new Map([...documents.entries()].map(([id, value]) => [id, structuredClone(value)])),
+          new Map([...documents.entries()].map(([id, value]) => [id, copy(value)])),
         )
       }
       const result = await work(transaction)
@@ -137,6 +139,41 @@ class TransactionBusyDatabase implements CloudDatabase {
 }
 
 describe('CloudBaseStore', () => {
+  it('兼容没有 structuredClone 的云函数运行环境', async () => {
+    const runtime = globalThis as unknown as {
+      structuredClone?: (value: unknown) => unknown
+    }
+    const nativeStructuredClone = runtime.structuredClone
+    delete runtime.structuredClone
+
+    try {
+      const database = new FakeDatabase()
+      await database
+        .collection('users')
+        .doc('member-1')
+        .set({
+          id: 'member-1',
+          openId: 'openid-1',
+          name: '会员',
+          roles: ['member'],
+        })
+      const store = new CloudBaseStore(database)
+
+      await store.load()
+      await store.transaction(() => {
+        const member = store.users[0]
+        if (!member) throw new Error('会员不存在')
+        member.name = '新姓名'
+      })
+
+      expect((await database.collection('users').doc('member-1').get()).data).toMatchObject({
+        name: '新姓名',
+      })
+    } finally {
+      runtime.structuredClone = nativeStructuredClone
+    }
+  })
+
   it('事务内依次读取集合，避免 CloudBase TransactionBusy', async () => {
     const store = new CloudBaseStore(new TransactionBusyDatabase())
 

@@ -16,6 +16,7 @@ import { hashAdminPassword } from './seed'
 import {
   type Admin,
   type Coach,
+  cloneJson,
   DomainError,
   type Product,
   type ScheduleSlot,
@@ -210,7 +211,7 @@ const mutateAdminResource = (
       if (!user.roles.includes('coach')) user.roles.push('coach')
       if (existingIndex < 0) value.status = 'active'
     }
-    const record = { ...structuredClone(value), id } as unknown as User | Coach | Product
+    const record = { ...cloneJson(value), id } as unknown as User | Coach | Product
     if (existingIndex < 0) collection.push(record)
     else {
       collection[existingIndex] = { ...collection[existingIndex], ...record } as

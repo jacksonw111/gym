@@ -13,6 +13,7 @@ import type {
   Store,
   User,
 } from './store'
+import { cloneJson } from './store'
 
 interface CloudDocument {
   get(): Promise<{ data: unknown }>
@@ -43,7 +44,7 @@ const recordsFromResult = (result: unknown): Array<Record<string, unknown>> => {
   return result
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
     .map((item) => {
-      const record = structuredClone(item)
+      const record = cloneJson(item)
       if (typeof record.id !== 'string' && typeof record._id === 'string') record.id = record._id
       delete record._id
       return record
@@ -213,9 +214,7 @@ export class CloudBaseStore implements Store {
           const current = new Map(definition.read().map((record) => [record.id, record] as const))
           for (const [id, record] of current) {
             if (previous.get(id) !== JSON.stringify(record)) {
-              await collection
-                .doc(id)
-                .set(structuredClone(record) as unknown as Record<string, unknown>)
+              await collection.doc(id).set(cloneJson(record) as unknown as Record<string, unknown>)
             }
           }
           for (const id of previous.keys()) {
