@@ -41,7 +41,7 @@
     </view>
     <view class="section-heading">
       <text class="section-title">我的训练权益</text>
-      <text class="section-link" bindtap="openCheckout">继续购买</text>
+      <button class="section-link" bindtap="openCheckout">继续购买</button>
     </view>
     <view wx:if="{{memberships.length}}">
       <view
