@@ -431,10 +431,9 @@ textarea:focus {
   text-align: left;
 }
 
-.nav-item > span {
+.admin-icon {
   color: oklch(58% 0.02 78);
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
+  transition: color 160ms ease;
 }
 
 .nav-item b {
@@ -457,7 +456,7 @@ textarea:focus {
   background: var(--red);
 }
 
-.nav-item.active > span {
+.nav-item.active .admin-icon {
   color: oklch(91% 0.035 35);
 }
 
@@ -1568,7 +1567,7 @@ blockquote cite {
     padding: 0.45rem;
   }
 
-  .nav-item > span {
+  .nav-item .admin-icon {
     display: none;
   }
 

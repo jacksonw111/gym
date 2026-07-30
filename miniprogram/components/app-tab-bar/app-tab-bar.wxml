@@ -8,7 +8,12 @@
     aria-role="button"
     aria-label="{{item.label}}"
   >
-    <text class="tab-bar__mark">{{item.mark}}</text>
+    <van-icon
+      class="tab-bar__icon"
+      name="{{item.icon}}"
+      size="42rpx"
+      aria-hidden="true"
+     />
     <text class="tab-bar__label">{{item.label}}</text>
   </view>
 </view>

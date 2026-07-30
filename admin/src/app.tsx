@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import type { AdminApi, AdminData } from './api'
 import { adminApi } from './api'
+import { AdminIcon, type AdminIconName } from './components/admin-icon'
 import { AppealsPage } from './pages/appeals'
 import { BookingsPage } from './pages/bookings'
 import { CoachesPage } from './pages/coaches'
@@ -10,13 +11,13 @@ import { ProductsPage } from './pages/products'
 
 type Page = 'dashboard' | 'coaches' | 'members' | 'products' | 'bookings' | 'appeals'
 
-const pages: Array<{ id: Page; label: string; marker: string }> = [
-  { id: 'dashboard', label: '概览', marker: '01' },
-  { id: 'coaches', label: '教练', marker: '02' },
-  { id: 'members', label: '会员', marker: '03' },
-  { id: 'products', label: '课包', marker: '04' },
-  { id: 'bookings', label: '预约', marker: '05' },
-  { id: 'appeals', label: '申诉', marker: '06' },
+const pages: Array<{ id: Page; label: string; icon: AdminIconName }> = [
+  { id: 'dashboard', label: '概览', icon: 'dashboard' },
+  { id: 'coaches', label: '教练', icon: 'coaches' },
+  { id: 'members', label: '会员', icon: 'members' },
+  { id: 'products', label: '课包', icon: 'products' },
+  { id: 'bookings', label: '预约', icon: 'bookings' },
+  { id: 'appeals', label: '申诉', icon: 'appeals' },
 ]
 
 function LoginGate({ api, onLogin }: { api: AdminApi; onLogin: () => void }) {
@@ -148,7 +149,7 @@ function AdminShell({
               aria-current={item.id === page ? 'page' : undefined}
               onClick={() => onNavigate(item.id)}
             >
-              <span>{item.marker}</span>
+              <AdminIcon name={item.icon} />
               {item.label}
               {item.id === 'appeals' && pendingAppeals > 0 && (
                 <b title={`${pendingAppeals} 条待处理`}>{pendingAppeals}</b>
@@ -167,7 +168,7 @@ function AdminShell({
       <div className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">PURUI / {activePage?.marker}</p>
+            <p className="eyebrow">PURUI / OPERATIONS</p>
             <strong>{activePage?.label}</strong>
           </div>
           <div className="operator">

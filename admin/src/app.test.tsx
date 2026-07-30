@@ -35,6 +35,7 @@ describe('管理员登录', () => {
     expect(screen.getByRole('button', { name: '概览' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '教练' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '申诉' })).toBeInTheDocument()
+    expect(screen.queryByText('02')).not.toBeInTheDocument()
   })
 
   it('无效账号显示明确错误', async () => {

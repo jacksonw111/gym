@@ -17,6 +17,7 @@ import {
   getLessonActions,
   switchableRole,
 } from '../../miniprogram/models/member'
+import { tabs } from '../../miniprogram/models/navigation'
 import type { Lesson, MembershipPackage, User } from '../../miniprogram/shared/contracts'
 
 const packages: MembershipPackage[] = [
@@ -161,6 +162,14 @@ describe('member login flow', () => {
   it('builds explicit return destinations for profile and checkout', () => {
     expect(loginPageUrl('profile')).toBe('/pages/member-login/member-login?returnTo=profile')
     expect(loginPageUrl('checkout')).toBe('/pages/member-login/member-login?returnTo=checkout')
+  })
+})
+
+describe('tab navigation', () => {
+  it('uses labelled icons without text markers', () => {
+    const items = Object.values(tabs).flat()
+    expect(items.every((tab) => tab.icon && tab.label)).toBe(true)
+    expect(items.some((tab) => 'mark' in tab)).toBe(false)
   })
 })
 
