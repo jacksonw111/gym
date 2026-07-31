@@ -57,7 +57,7 @@ export const createRuntimeStore: StoreFactory = (context) =>
   new EmasStore(context.mpserverless.db)
 
 export const loadRuntimeSecrets = (): RuntimeSecrets =>
-  require('../secrets.local.json') as RuntimeSecrets
+  require('./secrets.json') as RuntimeSecrets
 
 const asPaymentFetch = (httpClient: RuntimeHttpClient) => {
   return async (

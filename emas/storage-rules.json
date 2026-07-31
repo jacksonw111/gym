@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "path": "/avatars/*",
+      "read": true,
+      "write": "authenticated"
+    },
+    {
+      "path": "/*",
+      "read": false,
+      "write": false
+    }
+  ]
+}

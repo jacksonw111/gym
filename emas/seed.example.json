@@ -1,0 +1,18 @@
+{
+  "seedToken": "",
+  "admin": {
+    "id": "admin-1",
+    "username": "admin",
+    "passwordHash": ""
+  },
+  "products": [
+    {
+      "id": "product-1",
+      "name": "十节私教课",
+      "priceCents": 5000,
+      "lessonCount": 10,
+      "status": "published"
+    }
+  ],
+  "coaches": []
+}

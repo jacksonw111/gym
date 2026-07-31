@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "collections": [
+    {
+      "name": "users",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "users_id_unique", "fields": ["id"], "unique": true },
+        { "name": "users_emas_user_unique", "fields": ["emasUserId"], "unique": true }
+      ]
+    },
+    {
+      "name": "coaches",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "coaches_id_unique", "fields": ["id"], "unique": true },
+        { "name": "coaches_user_unique", "fields": ["userId"], "unique": true }
+      ]
+    },
+    {
+      "name": "products",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [{ "name": "products_id_unique", "fields": ["id"], "unique": true }]
+    },
+    {
+      "name": "memberships",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "memberships_id_unique", "fields": ["id"], "unique": true },
+        { "name": "memberships_member", "fields": ["memberId"] },
+        { "name": "memberships_coach", "fields": ["coachId"] }
+      ]
+    },
+    {
+      "name": "orders",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "orders_id_unique", "fields": ["id"], "unique": true },
+        { "name": "orders_request_unique", "fields": ["requestId"], "unique": true }
+      ]
+    },
+    {
+      "name": "schedules",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "schedules_id_unique", "fields": ["id"], "unique": true },
+        { "name": "schedules_coach_start_unique", "fields": ["coachId", "startsAt"], "unique": true }
+      ]
+    },
+    {
+      "name": "lessons",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "lessons_id_unique", "fields": ["id"], "unique": true },
+        { "name": "lessons_member", "fields": ["memberId"] },
+        { "name": "lessons_coach_start", "fields": ["coachId", "startsAt"] }
+      ]
+    },
+    {
+      "name": "appeals",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "appeals_id_unique", "fields": ["id"], "unique": true },
+        { "name": "appeals_member", "fields": ["memberId"] }
+      ]
+    },
+    {
+      "name": "ledger",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "ledger_id_unique", "fields": ["id"], "unique": true },
+        { "name": "ledger_package", "fields": ["packageId"] }
+      ]
+    },
+    {
+      "name": "admins",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "admins_id_unique", "fields": ["id"], "unique": true },
+        { "name": "admins_username_unique", "fields": ["username"], "unique": true }
+      ]
+    },
+    {
+      "name": "admin_sessions",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "admin_sessions_id_unique", "fields": ["id"], "unique": true },
+        { "name": "admin_sessions_token_unique", "fields": ["token"], "unique": true },
+        { "name": "admin_sessions_expiry", "fields": ["expiresAt"] }
+      ]
+    },
+    {
+      "name": "booking_locks",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "booking_locks_id_unique", "fields": ["id"], "unique": true },
+        { "name": "booking_locks_slot_unique", "fields": ["slotKey"], "unique": true }
+      ]
+    },
+    {
+      "name": "operations",
+      "clientPermissions": { "read": false, "write": false },
+      "indexes": [
+        { "name": "operations_id_unique", "fields": ["id"], "unique": true },
+        { "name": "operations_request_unique", "fields": ["requestId"], "unique": true }
+      ]
+    }
+  ]
+}
