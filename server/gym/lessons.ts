@@ -19,9 +19,14 @@ export interface BookLessonInput {
 
 export const bookLesson = async (store: Store, input: BookLessonInput): Promise<Lesson> =>
   store.transaction(() => {
-    const duplicate = store.lessons.find(
-      (item) => item.memberId === input.memberId && item.requestId === input.requestId,
+    const previousOperation = store.operations.find(
+      (item) => item.requestId === input.requestId && item.action === 'bookLesson',
     )
+    const duplicate = previousOperation
+      ? store.lessons.find((item) => item.id === previousOperation.entityId)
+      : store.lessons.find(
+          (item) => item.memberId === input.memberId && item.requestId === input.requestId,
+        )
     if (duplicate) return duplicate
 
     const coach = store.coaches.find((item) => item.id === input.coachId)
@@ -33,12 +38,15 @@ export const bookLesson = async (store: Store, input: BookLessonInput): Promise<
     if (new Date(slot.startsAt).getTime() <= new Date(input.now).getTime()) {
       throw new DomainError('不能预约已开始的课程')
     }
-    const occupied = store.lessons.some(
-      (item) =>
-        item.coachId === input.coachId &&
-        item.startsAt === input.startsAt &&
-        item.status === 'booked',
-    )
+    const slotKey = `${input.coachId}:${input.startsAt}`
+    const occupied =
+      store.bookingLocks.some((item) => item.slotKey === slotKey) ||
+      store.lessons.some(
+        (item) =>
+          item.coachId === input.coachId &&
+          item.startsAt === input.startsAt &&
+          item.status === 'booked',
+      )
     if (occupied) throw new DomainError('该时段已被预约')
     const membership = store.packages.find((item) => item.id === input.packageId)
     if (!membership || membership.memberId !== input.memberId) {
@@ -61,6 +69,13 @@ export const bookLesson = async (store: Store, input: BookLessonInput): Promise<
     membership.lockedLessons += 1
     assertPackageInvariant(membership)
     store.lessons.push(lesson)
+    store.bookingLocks.push({
+      id: slotKey,
+      slotKey,
+      coachId: input.coachId,
+      startsAt: input.startsAt,
+      lessonId: lesson.id,
+    })
     appendLedger(store, {
       packageId: membership.id,
       lessonId: lesson.id,
@@ -71,6 +86,13 @@ export const bookLesson = async (store: Store, input: BookLessonInput): Promise<
       totalDelta: 0,
       createdAt: input.now,
       actorId: input.memberId,
+    })
+    store.operations.push({
+      id: input.requestId,
+      requestId: input.requestId,
+      action: 'bookLesson',
+      entityId: lesson.id,
+      completedAt: input.now,
     })
     return lesson
   })
@@ -144,6 +166,7 @@ export const cancelLessonByMember = async (
     }
     releaseLockedLesson(store, lesson, membership, now, memberId)
     lesson.status = 'member_cancelled'
+    store.bookingLocks = store.bookingLocks.filter((item) => item.lessonId !== lesson.id)
     return lesson
   })
 
@@ -165,6 +188,7 @@ export const cancelLessonByCoach = async (
       releaseLockedLesson(store, lesson, membership, now, coachId)
       lesson.status = 'coach_cancelled_released'
     }
+    store.bookingLocks = store.bookingLocks.filter((item) => item.lessonId !== lesson.id)
     return lesson
   })
 

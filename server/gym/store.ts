@@ -142,6 +142,22 @@ export interface AdminSession {
   expiresAt: string
 }
 
+export interface BookingLock {
+  id: string
+  slotKey: string
+  coachId: string
+  startsAt: string
+  lessonId: string
+}
+
+export interface OperationRecord {
+  id: string
+  requestId: string
+  action: string
+  entityId: string
+  completedAt: string
+}
+
 export interface StoreSeed {
   users?: User[]
   coaches?: Coach[]
@@ -154,6 +170,8 @@ export interface StoreSeed {
   ledger?: LedgerEntry[]
   admins?: Admin[]
   sessions?: AdminSession[]
+  bookingLocks?: BookingLock[]
+  operations?: OperationRecord[]
 }
 
 export const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
@@ -170,6 +188,8 @@ export interface Store {
   ledger: LedgerEntry[]
   admins: Admin[]
   sessions: AdminSession[]
+  bookingLocks: BookingLock[]
+  operations: OperationRecord[]
   transaction<T>(work: () => Promise<T> | T): Promise<T>
   nextId(prefix: string): string
 }
@@ -188,6 +208,8 @@ export class MemoryStore implements Store {
   ledger: LedgerEntry[]
   admins: Admin[]
   sessions: AdminSession[]
+  bookingLocks: BookingLock[]
+  operations: OperationRecord[]
   private counter = 0
   private queue: Promise<void> = Promise.resolve()
 
@@ -203,6 +225,8 @@ export class MemoryStore implements Store {
     this.ledger = cloneJson(seed.ledger ?? [])
     this.admins = cloneJson(seed.admins ?? [])
     this.sessions = cloneJson(seed.sessions ?? [])
+    this.bookingLocks = cloneJson(seed.bookingLocks ?? [])
+    this.operations = cloneJson(seed.operations ?? [])
   }
 
   async transaction<T>(work: () => Promise<T> | T): Promise<T> {
@@ -224,6 +248,8 @@ export class MemoryStore implements Store {
       ledger: this.ledger,
       admins: this.admins,
       sessions: this.sessions,
+      bookingLocks: this.bookingLocks,
+      operations: this.operations,
     })
     const counter = this.counter
     try {
@@ -240,6 +266,8 @@ export class MemoryStore implements Store {
       this.ledger = snapshot.ledger ?? []
       this.admins = snapshot.admins ?? []
       this.sessions = snapshot.sessions ?? []
+      this.bookingLocks = snapshot.bookingLocks ?? []
+      this.operations = snapshot.operations ?? []
       this.counter = counter
       throw error
     } finally {

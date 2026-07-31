@@ -63,6 +63,19 @@ describe('预约', () => {
     expect(store.packages[0]).toMatchObject({ availableLessons: 0, lockedLessons: 1 })
     expect(store.ledger).toHaveLength(1)
     expect(store.ledger[0]?.operation).toBe('lock')
+    expect(store.bookingLocks).toEqual([
+      expect.objectContaining({
+        slotKey: `${coach.id}:${slot.startsAt}`,
+        lessonId: first.id,
+      }),
+    ])
+    expect(store.operations).toEqual([
+      expect.objectContaining({
+        requestId: 'book-request-1',
+        action: 'bookLesson',
+        entityId: first.id,
+      }),
+    ])
   })
 
   it('并发争抢同一教练同一时段时只允许一人成功', async () => {
