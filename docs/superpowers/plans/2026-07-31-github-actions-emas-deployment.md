@@ -33,6 +33,7 @@ it('deploys the core EMAS services from GitHub Actions', () => {
   expect(workflow).toContain('secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET')
   expect(workflow).toContain('secrets.EMAS_MINIPROGRAM_CONFIG')
   expect(workflow).toContain('secrets.EMAS_SERVER_SECRETS')
+  expect(workflow).toContain('secrets.WECHAT_APP_SECRET')
   expect(workflow).toContain('npm run check')
   expect(workflow).toContain('npm test')
   expect(workflow).toContain(
@@ -108,8 +109,9 @@ jobs:
         env:
           EMAS_MINIPROGRAM_CONFIG: ${{ secrets.EMAS_MINIPROGRAM_CONFIG }}
           EMAS_SERVER_SECRETS: ${{ secrets.EMAS_SERVER_SECRETS }}
+          WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
         run: |
-          node -e "const fs=require('node:fs'); const mini=JSON.parse(process.env.EMAS_MINIPROGRAM_CONFIG); const server=JSON.parse(process.env.EMAS_SERVER_SECRETS); fs.writeFileSync('miniprogram/config/emas.local.js', 'module.exports = ' + JSON.stringify(mini, null, 2) + '\\n'); fs.writeFileSync('emas/secrets.local.json', JSON.stringify(server, null, 2) + '\\n')"
+          node -e "const fs=require('node:fs'); const mini=JSON.parse(process.env.EMAS_MINIPROGRAM_CONFIG); const server=JSON.parse(process.env.EMAS_SERVER_SECRETS); server.wechatAppSecret=process.env.WECHAT_APP_SECRET; fs.writeFileSync('miniprogram/config/emas.local.js', 'module.exports = ' + JSON.stringify(mini, null, 2) + '\\n'); fs.writeFileSync('emas/secrets.local.json', JSON.stringify(server, null, 2) + '\\n')"
 
       - name: Deploy core EMAS services
         env:
@@ -120,7 +122,7 @@ jobs:
 
 - [ ] **Step 2: Document repository secrets and trigger behavior**
 
-Update `README.md` to state that pushing `main` runs the workflow and list the four required secret names. Explain that a local commit alone does not trigger GitHub Actions; the commit must be pushed.
+Update `README.md` to state that pushing `main` runs the workflow and list the five required secret names. Explain that a local commit alone does not trigger GitHub Actions; the commit must be pushed.
 
 - [ ] **Step 3: Run the focused test**
 
@@ -172,7 +174,7 @@ Check that the two Alibaba Cloud environment variables exist and that the local 
 
 Expected: no missing fields.
 
-- [ ] **Step 3: Create the four repository secrets**
+- [ ] **Step 3: Create the five repository secrets**
 
 Use `gh secret set` with values read from the current process and ignored local configuration files. Do not place secret values in command arguments or terminal output.
 
@@ -184,7 +186,7 @@ Run:
 rtk gh secret list --repo jacksonw111/gym
 ```
 
-Expected: the four required names appear. GitHub never returns their values.
+Expected: the five required names appear. GitHub never returns their values.
 
 - [ ] **Step 5: Push `main`**
 

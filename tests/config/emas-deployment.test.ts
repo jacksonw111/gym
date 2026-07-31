@@ -78,4 +78,24 @@ describe('EMAS deployment configuration', () => {
     expect(tracked).not.toContain('emas/secrets.local.json')
     expect(tracked).not.toContain('emas/seed.local.json')
   })
+
+  it('deploys the core EMAS services from GitHub Actions', () => {
+    const workflow = readFileSync(join(workspace, '.github/workflows/deploy-emas.yml'), 'utf8')
+
+    expect(workflow).toContain('branches: [main]')
+    expect(workflow).toContain('workflow_dispatch:')
+    expect(workflow).toContain('cancel-in-progress: false')
+    expect(workflow).toContain('secrets.ALIBABA_CLOUD_ACCESS_KEY_ID')
+    expect(workflow).toContain('secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET')
+    expect(workflow).toContain('secrets.EMAS_MINIPROGRAM_CONFIG')
+    expect(workflow).toContain('secrets.EMAS_SERVER_SECRETS')
+    expect(workflow).toContain('secrets.WECHAT_APP_SECRET')
+    expect(workflow).toContain('npm run check')
+    expect(workflow).toContain('npm test')
+    expect(workflow).toContain('npm run emas:deploy -- gym-api gym-admin-api auto-complete-lessons')
+    expect(workflow).not.toContain(
+      'npm run emas:deploy -- gym-api gym-admin-api auto-complete-lessons wechat-payment-notify',
+    )
+    expect(workflow).not.toContain('npm run emas:deploy -- seed')
+  })
 })

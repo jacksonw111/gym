@@ -121,6 +121,20 @@ admin/dist/
 
 后台接口的 HTTP 路径固定为 `/http/gym-admin-api`，后续重复部署不会改变地址。
 
+### GitHub 自动发布
+
+推送代码到 GitHub 的 `main` 分支后，`.github/workflows/deploy-emas.yml` 会先运行代码检查和全部测试，再自动发布 `gym-api`、`gym-admin-api`、后台网页和 `auto-complete-lessons`。也可以在 GitHub Actions 页面手动运行。
+
+在 GitHub 仓库的 Settings → Secrets and variables → Actions 中配置：
+
+- `ALIBABA_CLOUD_ACCESS_KEY_ID`
+- `ALIBABA_CLOUD_ACCESS_KEY_SECRET`
+- `EMAS_MINIPROGRAM_CONFIG`：`miniprogram/config/emas.local.js` 对应对象的 JSON 内容
+- `EMAS_SERVER_SECRETS`：`emas/secrets.local.json` 的 JSON 内容
+- `WECHAT_APP_SECRET`：微信小程序 AppSecret
+
+本地执行 `git commit` 不会触发 GitHub Actions，提交还需要通过 `git push` 推送到 `main`。一次性初始化函数和支付回调不会自动发布。
+
 部署 `seed` 后，在控制台测试中传入：
 
 ```json

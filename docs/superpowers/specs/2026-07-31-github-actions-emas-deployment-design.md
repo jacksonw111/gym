@@ -30,14 +30,15 @@
 
 ## 密钥
 
-GitHub 仓库保存四个 Actions Secrets：
+GitHub 仓库保存五个 Actions Secrets：
 
 - `ALIBABA_CLOUD_ACCESS_KEY_ID`
 - `ALIBABA_CLOUD_ACCESS_KEY_SECRET`
 - `EMAS_MINIPROGRAM_CONFIG`
 - `EMAS_SERVER_SECRETS`
+- `WECHAT_APP_SECRET`
 
-后两个 Secret 保存完整 JSON。工作流只在运行期间将它们写入被 Git 忽略的配置文件，不打印内容，也不上传为构建产物。
+两个 EMAS Secret 保存 JSON，微信 AppSecret 单独保存。工作流只在运行期间将它们合并并写入被 Git 忽略的配置文件，不打印内容，也不上传为构建产物。
 
 ## 并发与权限
 
