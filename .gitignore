@@ -1,6 +1,7 @@
 node_modules/
 miniprogram/miniprogram_npm/
 miniprogram/config/emas.local.js
+emas/secrets.local.json
 project.private.config.json
 .DS_Store
 .playwright-cli/
