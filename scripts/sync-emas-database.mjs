@@ -25,9 +25,15 @@ const client = new SDK.default(
   }),
 )
 
-const runCommand = async (body) => {
+// RunDBCommand 的 body 是 JSON 命令对象，例如
+// {"command":"createIndex","collection":"places","field":{"location":"2dsphere"},
+//  "options":{"name":"location_2dsphere","unique":false}}
+const runCommand = async (payload) => {
   const response = await client.runDBCommand(
-    new SDK.RunDBCommandRequest({ spaceId: miniConfig.spaceId, body }),
+    new SDK.RunDBCommandRequest({
+      spaceId: miniConfig.spaceId,
+      body: JSON.stringify(payload),
+    }),
   )
   return response.body?.result
 }
@@ -35,53 +41,35 @@ const runCommand = async (body) => {
 const errorText = (error) =>
   String(error?.data?.errorMessage ?? error?.message ?? error)
 
-const ensureCollection = async (name) => {
+// createIndex 会自动创建不存在的集合，因此集合与索引一并保证
+const ensureIndex = async (collectionName, index) => {
+  const payload = {
+    command: 'createIndex',
+    collection: collectionName,
+    field: Object.fromEntries(index.fields.map((field) => [field, 1])),
+    options: {
+      name: index.name,
+      unique: index.unique === true,
+      ...(index.sparse ? { sparse: true } : {}),
+    },
+  }
   try {
-    await runCommand(`db.createCollection("${name}")`)
-    console.log(`Created collection: ${name}`)
+    await runCommand(payload)
+    console.log(`Ensured index: ${collectionName}.${index.name}`)
     return
   } catch (error) {
-    if (/already exist|NamespaceExists|已存在/i.test(errorText(error))) {
-      console.log(`Collection exists: ${name}`)
-      return
-    }
-    // createCollection 不被命令接口支持时退回写入触发自动建表
-    try {
-      await runCommand(`db.${name}.insertOne({ _id: "__ensure__" })`)
-      await runCommand(`db.${name}.deleteOne({ _id: "__ensure__" })`)
-      console.log(`Created collection via write: ${name}`)
-    } catch (fallbackError) {
-      throw new Error(
-        `无法创建集合 ${name}：${errorText(error)} / ${errorText(fallbackError)}`,
-      )
-    }
-  }
-}
-
-const ensureIndex = async (collectionName, index) => {
-  const keys = JSON.stringify(
-    Object.fromEntries(index.fields.map((field) => [field, 1])),
-  )
-  const options = JSON.stringify({
-    name: index.name,
-    ...(index.unique ? { unique: true } : {}),
-    ...(index.sparse ? { sparse: true } : {}),
-  })
-  const create = () =>
-    runCommand(`db.${collectionName}.createIndex(${keys}, ${options})`)
-  try {
-    await create()
-    console.log(`Ensured index: ${collectionName}.${index.name}`)
-  } catch (error) {
     const message = errorText(error)
-    if (!/conflict|already exists with a different name|different options/i.test(message)) {
-      console.warn(`跳过索引 ${collectionName}.${index.name}: ${message}`)
-      return
+    if (!/conflict|already exists|IndexOptions|IndexKeySpecsConflict/i.test(message)) {
+      throw new Error(`无法创建索引 ${collectionName}.${index.name}：${message}`)
     }
     // 同名索引配置不同：删除后按清单重建
     try {
-      await runCommand(`db.${collectionName}.dropIndex("${index.name}")`)
-      await create()
+      await runCommand({
+        command: 'dropIndex',
+        collection: collectionName,
+        options: { name: index.name },
+      })
+      await runCommand(payload)
       console.log(`Recreated index: ${collectionName}.${index.name}`)
     } catch (recreateError) {
       console.warn(
@@ -92,7 +80,6 @@ const ensureIndex = async (collectionName, index) => {
 }
 
 for (const collection of manifest.collections) {
-  await ensureCollection(collection.name)
   for (const index of collection.indexes ?? []) {
     await ensureIndex(collection.name, index)
   }
