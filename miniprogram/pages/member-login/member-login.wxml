@@ -40,7 +40,7 @@
        />
       <button
         class="primary-button phone-button"
-        disabled="{{!ready || !manualPhoneValid || submitting}}"
+        disabled="{{!avatarPath || !nickname || !manualPhoneValid || submitting}}"
         loading="{{submitting}}"
         bindtap="manualLogin"
       >{{submitting ? '正在建立档案' : '使用填写手机号登录'}}</button>
@@ -50,13 +50,14 @@
       <button
         class="primary-button phone-button"
         open-type="getPhoneNumber"
-        disabled="{{!ready || submitting}}"
+        disabled="{{!avatarPath || !nickname || submitting}}"
         loading="{{submitting}}"
         bindgetphonenumber="authorizePhone"
       >{{submitting ? '正在建立档案' : '微信授权手机号并登录'}}</button>
       <text class="privacy-note">点击按钮后，微信会显示手机号授权确认。</text>
     </block>
-    <text wx:if="{{!ready}}" class="login-hint">请先选择头像并填写昵称，真实登录按钮才会启用。</text>
+    <text wx:if="{{!avatarPath || !nickname}}" class="login-hint">请先选择头像并填写昵称，登录按钮才会启用。</text>
+    <text wx:elif="{{manualPhoneMode && !manualPhoneValid}}" class="login-hint">请填写正确的 11 位手机号。</text>
     <text wx:if="{{error}}" class="login-error">{{error}}</text>
   </view>
 </view>

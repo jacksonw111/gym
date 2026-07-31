@@ -1,6 +1,7 @@
 import {
   isValidMainlandPhone,
   type LoginReturn,
+  normalizePhoneInput,
   registrationReady,
   shouldUseManualPhone,
 } from '../../models/auth'
@@ -15,7 +16,7 @@ interface NicknameInputEvent extends WechatMiniprogram.BaseEvent {
 }
 
 interface PhoneInputEvent extends WechatMiniprogram.BaseEvent {
-  detail: { value: string }
+  detail: { value: string | number }
 }
 
 interface PhoneNumberEvent extends WechatMiniprogram.BaseEvent {
@@ -27,7 +28,6 @@ Page({
     avatarPath: '',
     nickname: '',
     returnTo: 'profile' as LoginReturn,
-    ready: false,
     manualPhone: '',
     manualPhoneValid: false,
     manualPhoneMode: false,
@@ -46,7 +46,6 @@ Page({
     const avatarPath = event.detail.avatarUrl
     this.setData({
       avatarPath,
-      ready: registrationReady(avatarPath, this.data.nickname),
       error: '',
     })
   },
@@ -55,13 +54,12 @@ Page({
     const nickname = event.detail.value
     this.setData({
       nickname,
-      ready: registrationReady(this.data.avatarPath, nickname),
       error: '',
     })
   },
 
   changeManualPhone(event: PhoneInputEvent) {
-    const manualPhone = event.detail.value.trim()
+    const manualPhone = normalizePhoneInput(event.detail.value)
     this.setData({
       manualPhone,
       manualPhoneValid: isValidMainlandPhone(manualPhone),
@@ -70,7 +68,7 @@ Page({
   },
 
   async authorizePhone(event: PhoneNumberEvent) {
-    if (this.data.submitting || !this.data.ready) {
+    if (this.data.submitting || !registrationReady(this.data.avatarPath, this.data.nickname)) {
       return
     }
     const phoneCloudId = event.detail.cloudID
@@ -85,7 +83,11 @@ Page({
   },
 
   async manualLogin() {
-    if (this.data.submitting || !this.data.ready || !this.data.manualPhoneValid) {
+    if (
+      this.data.submitting ||
+      !registrationReady(this.data.avatarPath, this.data.nickname) ||
+      !this.data.manualPhoneValid
+    ) {
       return
     }
     await this.submitRegistration({ phone: this.data.manualPhone })

@@ -7,6 +7,7 @@ import {
 import {
   isValidMainlandPhone,
   loginPageUrl,
+  normalizePhoneInput,
   registrationReady,
   shouldUseManualPhone,
 } from '../../miniprogram/models/auth'
@@ -175,6 +176,11 @@ describe('member login flow', () => {
     expect(isValidMainlandPhone('13800000000')).toBe(true)
     expect(isValidMainlandPhone('1380000000')).toBe(false)
     expect(isValidMainlandPhone('12345678901')).toBe(false)
+  })
+
+  it('normalizes simulator number input before validating it', () => {
+    expect(normalizePhoneInput(13800000000)).toBe('13800000000')
+    expect(normalizePhoneInput('138 0000 0000')).toBe('13800000000')
   })
 
   it('shows manual phone entry immediately only in the developer simulator', () => {

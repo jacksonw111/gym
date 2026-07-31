@@ -5,6 +5,9 @@ export const registrationReady = (avatarPath: string, nickname: string): boolean
 
 export const isValidMainlandPhone = (phone: string): boolean => /^1[3-9]\d{9}$/.test(phone)
 
+export const normalizePhoneInput = (value: string | number): string =>
+  String(value).replace(/\D/g, '').slice(0, 11)
+
 export const shouldUseManualPhone = (platform: string): boolean => platform === 'devtools'
 
 export const loginPageUrl = (returnTo: LoginReturn): string =>
