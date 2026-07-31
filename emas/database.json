@@ -14,7 +14,7 @@
       "clientPermissions": { "read": false, "write": false },
       "indexes": [
         { "name": "coaches_id_unique", "fields": ["id"], "unique": true },
-        { "name": "coaches_user_unique", "fields": ["userId"], "unique": true }
+        { "name": "coaches_user_unique", "fields": ["userId"], "unique": true, "sparse": true }
       ]
     },
     {

@@ -58,12 +58,22 @@ Page({
       wx.showToast({ title: '当前订单正在确认，请先查询结果', icon: 'none' })
       return
     }
-    this.setData({ selectedProductId: event.currentTarget.dataset.id as string })
+    const productId = event.currentTarget.dataset.id as string
+    const product = this.data.products.find((item) => item.id === productId)
+    this.setData({
+      selectedProductId: productId,
+      ...(product?.coachId ? { selectedCoachId: product.coachId } : {}),
+    })
   },
 
   selectCoach(event: WechatMiniprogram.BaseEvent) {
     if (this.data.pendingOrderId) {
       wx.showToast({ title: '当前订单正在确认，请先查询结果', icon: 'none' })
+      return
+    }
+    const product = this.data.products.find((item) => item.id === this.data.selectedProductId)
+    if (product?.coachId && product.coachId !== (event.currentTarget.dataset.id as string)) {
+      wx.showToast({ title: '该课包已绑定教练，不能更换', icon: 'none' })
       return
     }
     this.setData({ selectedCoachId: event.currentTarget.dataset.id as string })

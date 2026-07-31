@@ -185,13 +185,24 @@ const mutateAdminResource = (
   }
   if (operation === 'save') {
     if (resource === 'coaches') {
-      const userId = requiredString(value, 'userId')
-      const user = store.users.find((item) => item.id === userId)
-      if (!user) throw new DomainError('关联的小程序用户不存在')
-      const duplicate = store.coaches.find((item) => item.userId === userId && item.id !== id)
-      if (duplicate) throw new DomainError('该小程序用户已经绑定教练')
-      if (!user.roles.includes('coach')) user.roles.push('coach')
+      const userId = typeof value.userId === 'string' && value.userId ? value.userId : undefined
+      if (userId) {
+        const user = store.users.find((item) => item.id === userId)
+        if (!user) throw new DomainError('关联的小程序用户不存在')
+        const duplicate = store.coaches.find((item) => item.userId === userId && item.id !== id)
+        if (duplicate) throw new DomainError('该小程序用户已经绑定教练')
+        if (!user.roles.includes('coach')) user.roles.push('coach')
+      } else {
+        delete value.userId
+      }
       if (existingIndex < 0) value.status = 'active'
+    }
+    if (resource === 'packages') {
+      const coachId = typeof value.coachId === 'string' ? value.coachId : ''
+      if (!coachId) throw new DomainError('课时包必须绑定教练')
+      if (!store.coaches.some((item) => item.id === coachId)) {
+        throw new DomainError('绑定的教练不存在')
+      }
     }
     const record = { ...cloneJson(value), id } as unknown as User | Coach | Product
     if (existingIndex < 0) collection.push(record)
@@ -451,11 +462,17 @@ export const createRouter = (
         }
         case 'purchase': {
           const member = getCurrentUser(store, request)
+          const productId = requiredString(payload, 'productId')
+          const boundCoachId = store.products.find((item) => item.id === productId)?.coachId
+          const coachId =
+            boundCoachId ??
+            (typeof payload.coachId === 'string' && payload.coachId ? payload.coachId : undefined)
+          if (!coachId) throw new ApiError('INVALID_REQUEST', '缺少参数：coachId')
           const order = await createOrder(store, {
             requestId: request.requestId,
             memberId: member.id,
-            coachId: requiredString(payload, 'coachId'),
-            productId: requiredString(payload, 'productId'),
+            coachId,
+            productId,
             createdAt: now,
           })
           if (!environment.createPaymentParameters) {

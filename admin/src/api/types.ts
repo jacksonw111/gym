@@ -10,7 +10,7 @@ export type LessonStatus =
 
 export interface Coach {
   id: string
-  userId: string
+  userId?: string
   name: string
   phone: string
   specialty: string
@@ -60,6 +60,8 @@ export interface Product {
   name: string
   price: number
   lessons: number
+  coachId: string
+  coachName: string
   status: ProductStatus
   soldCount: number
 }
@@ -117,7 +119,7 @@ export interface AdminData {
 
 export interface CoachInput {
   id?: string
-  userId: string
+  userId?: string
   name: string
   phone: string
   specialty: string
@@ -128,6 +130,7 @@ export interface ProductInput {
   name: string
   price: number
   lessons: number
+  coachId: string
 }
 
 export interface AdminApi {

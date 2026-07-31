@@ -12,7 +12,7 @@ export interface User {
 
 export interface Coach {
   id: string
-  userId: string
+  userId?: string
   name: string
   phone?: string
   specialty?: string
@@ -24,6 +24,7 @@ export interface Product {
   name: string
   priceCents: number
   lessonCount: number
+  coachId?: string
   status: 'published' | 'unpublished'
 }
 

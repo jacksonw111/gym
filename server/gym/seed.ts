@@ -33,6 +33,7 @@ export const createDevelopmentSeed = (): StoreSeed => ({
       name: '十节私教课',
       priceCents: 5_000,
       lessonCount: 10,
+      coachId: 'coach-1',
       status: 'published',
     },
   ],

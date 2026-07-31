@@ -1,7 +1,7 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import type { AdminApi, AdminData, Coach, CoachInput } from '../api'
 
-const blankCoach: CoachInput = { userId: '', name: '', phone: '', specialty: '' }
+const blankCoach: CoachInput = { name: '', phone: '', specialty: '' }
 
 export function CoachesPage({
   api,
@@ -30,7 +30,7 @@ export function CoachesPage({
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
-    if (!editing?.userId || !editing.name || !editing.phone || !editing.specialty) return
+    if (!editing?.name || !editing.phone || !editing.specialty) return
     const saved = await api.saveCoach(editing)
     await refresh()
     setSelectedId(saved.id)
@@ -95,25 +95,25 @@ export function CoachesPage({
             <p className="eyebrow">{editing.id ? 'EDIT COACH' : 'NEW COACH'}</p>
             <h2>{editing.id ? '编辑教练' : '新增教练'}</h2>
           </div>
-          <label>
-            关联小程序用户
-            <select
-              value={editing.userId}
-              onChange={(event) => setEditing({ ...editing, userId: event.target.value })}
-              disabled={Boolean(editing.id)}
-              required
-            >
-              <option value="">请选择已登录会员</option>
-              {data.members.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name} · {member.phone || member.id}
-                </option>
-              ))}
-              {editing.userId && !data.members.some((member) => member.id === editing.userId) && (
-                <option value={editing.userId}>{editing.userId}</option>
-              )}
-            </select>
-          </label>
+          {editing.id && (
+            <label>
+              关联小程序账号（可选）
+              <select
+                value={editing.userId ?? ''}
+                onChange={(event) => setEditing({ ...editing, userId: event.target.value })}
+              >
+                <option value="">暂不绑定</option>
+                {data.members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name} · {member.phone || member.id}
+                  </option>
+                ))}
+                {editing.userId && !data.members.some((member) => member.id === editing.userId) && (
+                  <option value={editing.userId}>{editing.userId}</option>
+                )}
+              </select>
+            </label>
+          )}
           <label>
             姓名
             <input
@@ -235,7 +235,7 @@ export function CoachesPage({
                 </div>
                 <div>
                   <dt>账号身份</dt>
-                  <dd>教练账号 · {selected.userId}</dd>
+                  <dd>{selected.userId ? `教练账号 · ${selected.userId}` : '未绑定小程序账号'}</dd>
                 </div>
                 <div>
                   <dt>近期排班</dt>
