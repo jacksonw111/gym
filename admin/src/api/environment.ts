@@ -1,17 +1,19 @@
 export interface AdminEnvironmentInput {
   mode: string
-  cloudEnvId: string
+  adminApiUrl: string
   mockDataEnabled: boolean
 }
 
-export type AdminEnvironment = { useMockData: true } | { useMockData: false; cloudEnvId: string }
+export type AdminEnvironment =
+  | { useMockData: true }
+  | { useMockData: false; adminApiUrl: string }
 
 export const resolveAdminEnvironment = (input: AdminEnvironmentInput): AdminEnvironment => {
   if (input.mode === 'test' || input.mockDataEnabled) {
     return { useMockData: true }
   }
-  if (!input.cloudEnvId.trim()) {
-    throw new Error('真实数据模式请配置 VITE_CLOUDBASE_ENV_ID')
+  if (!input.adminApiUrl.trim()) {
+    throw new Error('真实数据模式请配置 VITE_EMAS_ADMIN_API_URL')
   }
-  return { useMockData: false, cloudEnvId: input.cloudEnvId.trim() }
+  return { useMockData: false, adminApiUrl: input.adminApiUrl.trim() }
 }

@@ -1,39 +1,34 @@
-import cloudbase from '@cloudbase/js-sdk'
 import { normalizeAdminData, toCloudProductInput } from './normalize'
 import type { AdminApi, CoachInput, CoachStatus, ProductInput, ProductStatus } from './types'
 
-interface CloudResponse<T> {
+interface ApiResponse<T> {
   ok: boolean
   data?: T
-  error?: { message: string }
+  error?: { code?: string; message: string }
 }
 
 const SESSION_KEY = 'purui-admin-session'
 
-export const createProductionApi = (envId: string): AdminApi => {
-  const app = cloudbase.init({ env: envId, timeout: 15_000, persistence: 'local' })
-  const auth = app.auth({ persistence: 'local' })
-  const cloudReady = (async () => {
-    const state = await auth.getLoginState()
-    if (!state) {
-      await auth.anonymousAuthProvider().signIn()
-    }
-  })()
-
+export const createProductionApi = (adminApiUrl: string): AdminApi => {
   const call = async <T>(action: string, payload: Record<string, unknown> = {}): Promise<T> => {
-    await cloudReady
     const authToken = sessionStorage.getItem(SESSION_KEY)
-    const response = await app.callFunction({
-      name: 'gym-api',
-      data: {
+    const response = await fetch(adminApiUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
         action,
         requestId: crypto.randomUUID(),
         payload,
         ...(authToken ? { authToken } : {}),
-      },
+      }),
     })
-    const result = response.result as CloudResponse<T>
-    if (!result.ok) throw new Error(result.error?.message ?? '后台请求失败')
+    const result = (await response.json()) as ApiResponse<T>
+    if (response.status === 401 || result.error?.code === 'UNAUTHORIZED') {
+      sessionStorage.removeItem(SESSION_KEY)
+    }
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error?.message ?? '后台请求失败')
+    }
     return result.data as T
   }
 

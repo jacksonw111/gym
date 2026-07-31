@@ -23,7 +23,6 @@
   "dependencies": {
     "@alicloud/mp-proxy-service": "^3.0.0",
     "@alicloud/mpserverless-sdk": "^3.1.5",
-    "@cloudbase/js-sdk": "3.6.7",
     "@vant/weapp": "1.11.7",
     "parameter": "^3.7.0",
     "react": "19.2.8",

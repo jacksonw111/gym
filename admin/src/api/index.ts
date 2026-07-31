@@ -4,11 +4,11 @@ import { createProductionApi } from './production'
 
 const environment = resolveAdminEnvironment({
   mode: import.meta.env.MODE,
-  cloudEnvId: import.meta.env.VITE_CLOUDBASE_ENV_ID ?? '',
+  adminApiUrl: import.meta.env.VITE_EMAS_ADMIN_API_URL ?? '',
   mockDataEnabled: import.meta.env.VITE_ADMIN_DEVELOPMENT === 'true',
 })
 
 export const adminApi = environment.useMockData
   ? developmentApi
-  : createProductionApi(environment.cloudEnvId)
+  : createProductionApi(environment.adminApiUrl)
 export type * from './types'

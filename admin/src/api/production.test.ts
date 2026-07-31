@@ -2,23 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { callFunction, getLoginState, signIn } = vi.hoisted(() => ({
-  callFunction: vi.fn(),
-  getLoginState: vi.fn(async () => null),
-  signIn: vi.fn(async () => ({ isAnonymousAuth: true })),
-}))
-
-vi.mock('@cloudbase/js-sdk', () => ({
-  default: {
-    init: () => ({
-      auth: () => ({
-        getLoginState,
-        anonymousAuthProvider: () => ({ signIn }),
-      }),
-      callFunction,
-    }),
-  },
-}))
+const fetchMock = vi.fn()
 
 import { createProductionApi } from './production'
 
@@ -132,13 +116,12 @@ const appeal = {
 }
 
 beforeEach(() => {
-  callFunction.mockReset()
-  getLoginState.mockClear()
-  signIn.mockClear()
+  fetchMock.mockReset()
+  vi.stubGlobal('fetch', fetchMock)
   sessionStorage.clear()
   sessionStorage.setItem('purui-admin-session', 'admin-token')
-  callFunction.mockImplementation(async ({ data }) => {
-    const request = data as {
+  fetchMock.mockImplementation(async (_url, init) => {
+    const request = JSON.parse(String(init?.body)) as {
       action: string
       payload: { resource?: string; operation?: string }
     }
@@ -150,25 +133,34 @@ beforeEach(() => {
           : request.action === 'listAppeals'
             ? [appeal]
             : {}
-    return { result: { ok: true, data: result } }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, data: result }),
+    }
   })
 })
 
 describe('正式数据适配', () => {
-  it('第一次调用前完成匿名云身份登录，且并发请求只登录一次', async () => {
-    const api = createProductionApi('test-env')
+  it('通过 EMAS HTTP 地址发送请求并携带后台会话', async () => {
+    const api = createProductionApi('https://api.example.com/gym-admin-api')
 
-    await Promise.all([api.loadData(), api.loadData()])
+    await api.loadData()
 
-    expect(getLoginState).toHaveBeenCalledTimes(1)
-    expect(signIn).toHaveBeenCalledTimes(1)
-    expect(signIn.mock.invocationCallOrder[0]).toBeLessThan(
-      callFunction.mock.invocationCallOrder[0] ?? 0,
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.com/gym-admin-api',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: expect.stringContaining('"authToken":"admin-token"'),
+      }),
     )
   })
 
   it('把云端关联集合和分单位字段转换为后台视图模型', async () => {
-    const data = await createProductionApi('test-env').loadData()
+    const data = await createProductionApi(
+      'https://api.example.com/gym-admin-api',
+    ).loadData()
 
     expect(data.products[0]).toMatchObject({ price: 50, lessons: 10 })
     expect(data.members[0]?.packages[0]).toMatchObject({
@@ -208,13 +200,15 @@ describe('正式数据适配', () => {
   })
 
   it('保存课包时发送云端 canonical 字段', async () => {
-    const api = createProductionApi('test-env')
+    const api = createProductionApi('https://api.example.com/gym-admin-api')
 
     await api.saveProduct({ id: 'product-1', name: '进阶课', price: 68, lessons: 12 })
 
-    expect(callFunction).toHaveBeenLastCalledWith({
-      name: 'gym-api',
-      data: expect.objectContaining({
+    const lastRequest = JSON.parse(
+      String(fetchMock.mock.calls.at(-1)?.[1]?.body),
+    )
+    expect(lastRequest).toEqual(
+      expect.objectContaining({
         action: 'adminCrud',
         authToken: 'admin-token',
         payload: {
@@ -228,6 +222,21 @@ describe('正式数据适配', () => {
           },
         },
       }),
+    )
+  })
+
+  it('会话失效时清除本地登录状态', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({
+        ok: false,
+        error: { code: 'UNAUTHORIZED', message: '管理员会话无效或已过期' },
+      }),
     })
+    const api = createProductionApi('https://api.example.com/gym-admin-api')
+
+    await expect(api.loadData()).rejects.toThrow('管理员会话无效或已过期')
+    expect(sessionStorage.getItem('purui-admin-session')).toBeNull()
   })
 })
