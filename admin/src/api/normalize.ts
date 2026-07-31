@@ -122,6 +122,7 @@ export const toCloudProductInput = (input: ProductInput): RecordValue => ({
   name: input.name,
   priceCents: Math.round(input.price * 100),
   lessonCount: input.lessons,
+  coachId: input.coachId,
 })
 
 export const normalizeAdminData = (
@@ -221,6 +222,8 @@ export const normalizeAdminData = (
     name: text(product.name),
     price: number(product.priceCents) / 100,
     lessons: number(product.lessonCount),
+    coachId: text(product.coachId),
+    coachName: text(product.coachId) ? coachName(product.coachId) : '未绑定',
     status: text(product.status, 'unpublished') as Product['status'],
     soldCount: orders.filter((order) => order.productId === product.id && order.status === 'paid')
       .length,

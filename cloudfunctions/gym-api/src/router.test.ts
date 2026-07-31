@@ -546,6 +546,135 @@ describe('CloudBase action router', () => {
     expect(store.coaches.filter((item) => item.userId === 'member-1')).toHaveLength(1)
   })
 
+  it('管理员可以创建不绑定小程序账号的教练', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const login = await router({
+      action: 'adminLogin',
+      requestId: 'admin-login-unbound-coach',
+      payload: { username: 'admin', password: 'dev-admin-password' },
+    })
+    if (!login.ok) throw new Error('管理员登录失败')
+    const token = (login.data as { token: string }).token
+
+    const response = await router({
+      action: 'adminCrud',
+      requestId: 'admin-create-unbound-coach',
+      authToken: token,
+      payload: {
+        resource: 'coaches',
+        operation: 'save',
+        data: {
+          name: '独立教练',
+          phone: '13800000002',
+          specialty: '拳击',
+        },
+      },
+    })
+
+    expect(response).toMatchObject({
+      ok: true,
+      data: { name: '独立教练', status: 'active' },
+    })
+    const created = store.coaches.find((item) => item.name === '独立教练')
+    expect(created?.userId).toBeUndefined()
+  })
+
+  it('管理员保存课时包时必须绑定已有教练', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const login = await router({
+      action: 'adminLogin',
+      requestId: 'admin-login-package-coach',
+      payload: { username: 'admin', password: 'dev-admin-password' },
+    })
+    if (!login.ok) throw new Error('管理员登录失败')
+    const token = (login.data as { token: string }).token
+
+    const missingCoach = await router({
+      action: 'adminCrud',
+      requestId: 'admin-save-package-no-coach',
+      authToken: token,
+      payload: {
+        resource: 'packages',
+        operation: 'save',
+        data: { name: '五节体验课', priceCents: 2_000, lessonCount: 5, status: 'published' },
+      },
+    })
+    expect(missingCoach).toEqual({
+      ok: false,
+      error: { code: 'DOMAIN_ERROR', message: '课时包必须绑定教练' },
+    })
+
+    const unknownCoach = await router({
+      action: 'adminCrud',
+      requestId: 'admin-save-package-bad-coach',
+      authToken: token,
+      payload: {
+        resource: 'packages',
+        operation: 'save',
+        data: {
+          name: '五节体验课',
+          priceCents: 2_000,
+          lessonCount: 5,
+          coachId: 'coach-missing',
+          status: 'published',
+        },
+      },
+    })
+    expect(unknownCoach).toEqual({
+      ok: false,
+      error: { code: 'DOMAIN_ERROR', message: '绑定的教练不存在' },
+    })
+
+    const saved = await router({
+      action: 'adminCrud',
+      requestId: 'admin-save-package-with-coach',
+      authToken: token,
+      payload: {
+        resource: 'packages',
+        operation: 'save',
+        data: {
+          name: '五节体验课',
+          priceCents: 2_000,
+          lessonCount: 5,
+          coachId: 'coach-1',
+          status: 'published',
+        },
+      },
+    })
+    expect(saved).toMatchObject({
+      ok: true,
+      data: { name: '五节体验课', coachId: 'coach-1' },
+    })
+  })
+
+  it('购买绑定教练的课时包时使用课时包绑定的教练', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: true,
+      production: false,
+    })
+
+    const purchased = await router({
+      action: 'purchase',
+      requestId: 'purchase-bound-coach',
+      payload: { productId: 'product-1' },
+      identity: { openId: 'dev-member-openid' },
+    })
+
+    expect(purchased).toMatchObject({
+      ok: true,
+      data: { order: { coachId: 'coach-1', productId: 'product-1' } },
+    })
+  })
+
   it('教练修改开放时间时更新已有时段而不是重复新增', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const router = createRouter(store, {

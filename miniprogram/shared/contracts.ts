@@ -17,7 +17,7 @@ export type CoachStatus = 'active' | 'inactive'
 
 export interface Coach {
   id: string
-  userId: string
+  userId?: string
   name: string
   avatarUrl?: string
   bio?: string
@@ -32,6 +32,7 @@ export interface PackageProduct {
   name: string
   priceCents: number
   lessonCount: number
+  coachId?: string
   status: PackageProductStatus
 }
 

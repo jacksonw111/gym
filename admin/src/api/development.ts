@@ -158,6 +158,8 @@ const seedData = (): AdminData => ({
       name: '12 节私教进阶包',
       price: 4680,
       lessons: 12,
+      coachId: 'coach-linxiao',
+      coachName: '林骁',
       status: 'published',
       soldCount: 34,
     },
@@ -166,6 +168,8 @@ const seedData = (): AdminData => ({
       name: '8 节私教基础包',
       price: 3280,
       lessons: 8,
+      coachId: 'coach-linxiao',
+      coachName: '林骁',
       status: 'published',
       soldCount: 52,
     },
@@ -174,6 +178,8 @@ const seedData = (): AdminData => ({
       name: '6 节体态改善包',
       price: 2880,
       lessons: 6,
+      coachId: 'coach-zhoulan',
+      coachName: '周岚',
       status: 'unpublished',
       soldCount: 18,
     },
@@ -369,6 +375,10 @@ const readData = (): AdminData => {
     for (const member of data.members) {
       for (const membership of member.packages) membership.changes ??= []
     }
+    for (const product of data.products) {
+      product.coachId ??= ''
+      product.coachName ??= '未绑定'
+    }
     return data
   }
   const data = seedData()
@@ -422,7 +432,7 @@ export const developmentApi: AdminApi = {
     } else {
       const coach = {
         id: `coach-${Date.now()}`,
-        userId: input.userId,
+        ...(input.userId ? { userId: input.userId } : {}),
         name: input.name,
         phone: input.phone,
         specialty: input.specialty,
@@ -462,15 +472,19 @@ export const developmentApi: AdminApi = {
   },
   async saveProduct(input: ProductInput) {
     const data = readData()
+    const coach = data.coaches.find((item) => item.id === input.coachId)
+    if (!coach) throw new Error('课时包必须绑定教练')
     const existing = input.id ? data.products.find((item) => item.id === input.id) : undefined
     if (existing) {
-      Object.assign(existing, input)
+      Object.assign(existing, input, { coachName: coach.name })
     } else {
       data.products.push({
         id: `product-${Date.now()}`,
         name: input.name,
         price: input.price,
         lessons: input.lessons,
+        coachId: input.coachId,
+        coachName: coach.name,
         status: 'unpublished',
         soldCount: 0,
       })

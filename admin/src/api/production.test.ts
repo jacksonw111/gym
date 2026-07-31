@@ -210,7 +210,13 @@ describe('正式数据适配', () => {
   it('保存课包时发送云端 canonical 字段', async () => {
     const api = createProductionApi('test-env')
 
-    await api.saveProduct({ id: 'product-1', name: '进阶课', price: 68, lessons: 12 })
+    await api.saveProduct({
+      id: 'product-1',
+      name: '进阶课',
+      price: 68,
+      lessons: 12,
+      coachId: 'coach-1',
+    })
 
     expect(callFunction).toHaveBeenLastCalledWith({
       name: 'gym-api',
@@ -225,6 +231,7 @@ describe('正式数据适配', () => {
             name: '进阶课',
             priceCents: 6800,
             lessonCount: 12,
+            coachId: 'coach-1',
           },
         },
       }),

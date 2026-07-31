@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import type { AdminApi, AdminData, ProductInput } from '../api'
 
-const blankProduct: ProductInput = { name: '', price: 0, lessons: 1 }
+const blankProduct: ProductInput = { name: '', price: 0, lessons: 1, coachId: '' }
 const money = (value: number) =>
   new Intl.NumberFormat('zh-CN', {
     style: 'currency',
@@ -23,7 +23,7 @@ export function ProductsPage({
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
-    if (!editing?.name || editing.price <= 0 || editing.lessons <= 0) return
+    if (!editing?.name || !editing.coachId || editing.price <= 0 || editing.lessons <= 0) return
     await api.saveProduct(editing)
     await refresh()
     setEditing(null)
@@ -88,6 +88,23 @@ export function ProductsPage({
               required
             />
           </label>
+          <label>
+            绑定教练
+            <select
+              value={editing.coachId}
+              onChange={(event) => setEditing({ ...editing, coachId: event.target.value })}
+              required
+            >
+              <option value="">请选择教练</option>
+              {data.coaches
+                .filter((coach) => coach.status === 'active' || coach.id === editing.coachId)
+                .map((coach) => (
+                  <option key={coach.id} value={coach.id}>
+                    {coach.name} · {coach.specialty}
+                  </option>
+                ))}
+            </select>
+          </label>
           <div className="button-row">
             <button type="button" className="secondary-button" onClick={() => setEditing(null)}>
               取消
@@ -103,6 +120,7 @@ export function ProductsPage({
           <thead>
             <tr>
               <th>课包名称</th>
+              <th>绑定教练</th>
               <th>价格</th>
               <th>课时数</th>
               <th>历史销量</th>
@@ -117,6 +135,7 @@ export function ProductsPage({
                   <strong>{product.name}</strong>
                   <small>SKU / {product.id.replace('product-', '').toUpperCase()}</small>
                 </td>
+                <td>{product.coachName}</td>
                 <td className="numeric">{money(product.price)}</td>
                 <td>{product.lessons} 节</td>
                 <td>{product.soldCount} 份</td>
@@ -136,6 +155,7 @@ export function ProductsPage({
                           name: product.name,
                           price: product.price,
                           lessons: product.lessons,
+                          coachId: product.coachId,
                         })
                       }
                     >
