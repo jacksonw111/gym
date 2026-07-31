@@ -6,7 +6,6 @@ export default defineConfig({
     include: [
       'tests/**/*.test.ts',
       'server/**/*.test.ts',
-      'cloudfunctions/**/*.test.ts',
       'emas/**/*.test.ts',
       'admin/src/**/*.test.{ts,tsx}',
     ],

@@ -4,9 +4,7 @@ export interface AdminEnvironmentInput {
   mockDataEnabled: boolean
 }
 
-export type AdminEnvironment =
-  | { useMockData: true }
-  | { useMockData: false; adminApiUrl: string }
+export type AdminEnvironment = { useMockData: true } | { useMockData: false; adminApiUrl: string }
 
 export const resolveAdminEnvironment = (input: AdminEnvironmentInput): AdminEnvironment => {
   if (input.mode === 'test' || input.mockDataEnabled) {

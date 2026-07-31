@@ -13,12 +13,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": [
-    "tests/**/*.ts",
-    "server/**/*.ts",
-    "cloudfunctions/**/*.ts",
-    "emas/**/*.ts",
-    "vitest.config.ts"
-  ],
+  "include": ["tests/**/*.ts", "server/**/*.ts", "emas/**/*.ts", "vitest.config.ts"],
   "exclude": ["node_modules"]
 }

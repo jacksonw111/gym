@@ -19,9 +19,9 @@ export type EnvironmentConfig = EnvironmentInput
 const hasCompleteEmasConfig = (config: EmasClientConfig): boolean =>
   Boolean(
     config.appId.trim() &&
-    config.spaceId.trim() &&
-    config.clientSecret.trim() &&
-    config.endpoint.trim(),
+      config.spaceId.trim() &&
+      config.clientSecret.trim() &&
+      config.endpoint.trim(),
   )
 
 export const resolveEnvironment = (input: EnvironmentInput): EnvironmentConfig => {

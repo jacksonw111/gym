@@ -1,36 +1,52 @@
-const required = [
-  'CLOUDBASE_ENV_ID',
-  'VITE_CLOUDBASE_ENV_ID',
-  'INTERNAL_SCHEDULER_TOKEN',
-  'WECHAT_PAYMENT_CREATE_URL',
-  'WECHAT_PAYMENT_VERIFY_URL',
-  'WECHAT_PAYMENT_API_TOKEN',
-]
+import { existsSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { resolve } from 'node:path'
 
-const missing = required.filter((name) => !process.env[name]?.trim())
-if (missing.length > 0) {
-  console.error(`缺少生产环境配置：${missing.join('、')}`)
-  process.exit(1)
+const require = createRequire(import.meta.url)
+const workspace = resolve(import.meta.dirname, '..')
+const miniConfigPath = resolve(workspace, 'miniprogram/config/emas.local.js')
+const secretsPath = resolve(workspace, 'emas/secrets.local.json')
+const missing = []
+
+if (!existsSync(miniConfigPath)) {
+  missing.push('miniprogram/config/emas.local.js')
+}
+if (!existsSync(secretsPath)) {
+  missing.push('emas/secrets.local.json')
+}
+if (!process.env.VITE_EMAS_ADMIN_API_URL?.trim()) {
+  missing.push('VITE_EMAS_ADMIN_API_URL')
 }
 
-if (process.env.CLOUDBASE_ENV_ID !== process.env.VITE_CLOUDBASE_ENV_ID) {
-  console.error('CLOUDBASE_ENV_ID 与 VITE_CLOUDBASE_ENV_ID 必须指向同一个云环境')
-  process.exit(1)
+if (missing.length === 0) {
+  const mini = require(miniConfigPath)
+  const secrets = JSON.parse(readFileSync(secretsPath, 'utf8'))
+  for (const key of ['appId', 'spaceId', 'clientSecret', 'endpoint']) {
+    if (!String(mini[key] ?? '').trim()) missing.push(`小程序 ${key}`)
+  }
+  for (const key of [
+    'wechatAppId',
+    'wechatAppSecret',
+    'adminAllowedOrigin',
+    'paymentCreateEndpoint',
+    'paymentVerifyEndpoint',
+    'paymentApiToken',
+  ]) {
+    if (!String(secrets[key] ?? '').trim()) missing.push(`服务端 ${key}`)
+  }
+  if (secrets.production !== true) missing.push('服务端 production=true')
+  if (secrets.developmentPaymentsEnabled === true) {
+    missing.push('服务端 developmentPaymentsEnabled=false')
+  }
 }
 
 if (process.env.VITE_ADMIN_DEVELOPMENT === 'true') {
-  console.error('生产环境禁止启用后台模拟数据')
+  missing.push('VITE_ADMIN_DEVELOPMENT=false')
+}
+
+if (missing.length > 0) {
+  console.error(`缺少或不符合正式环境配置：${missing.join('、')}`)
   process.exit(1)
 }
 
-if (process.env.GYM_PRODUCTION !== 'true') {
-  console.error('生产环境必须设置 GYM_PRODUCTION=true')
-  process.exit(1)
-}
-
-if (process.env.DEVELOPMENT_PAYMENTS_ENABLED === 'true') {
-  console.error('生产环境禁止启用测试支付')
-  process.exit(1)
-}
-
-console.log('生产环境配置检查通过')
+console.log('EMAS 正式环境配置检查通过')

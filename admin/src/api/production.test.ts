@@ -158,9 +158,7 @@ describe('正式数据适配', () => {
   })
 
   it('把云端关联集合和分单位字段转换为后台视图模型', async () => {
-    const data = await createProductionApi(
-      'https://api.example.com/gym-admin-api',
-    ).loadData()
+    const data = await createProductionApi('https://api.example.com/gym-admin-api').loadData()
 
     expect(data.products[0]).toMatchObject({ price: 50, lessons: 10 })
     expect(data.members[0]?.packages[0]).toMatchObject({
@@ -204,9 +202,7 @@ describe('正式数据适配', () => {
 
     await api.saveProduct({ id: 'product-1', name: '进阶课', price: 68, lessons: 12 })
 
-    const lastRequest = JSON.parse(
-      String(fetchMock.mock.calls.at(-1)?.[1]?.body),
-    )
+    const lastRequest = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))
     expect(lastRequest).toEqual(
       expect.objectContaining({
         action: 'adminCrud',

@@ -1,6 +1,6 @@
+import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { EMAS_COLLECTIONS } from '../../server/gym/store-emas'
 
@@ -24,9 +24,7 @@ describe('EMAS deployment configuration', () => {
     )
     expect(
       manifest.collections.every(
-        (item) =>
-          item.clientPermissions.read === false &&
-          item.clientPermissions.write === false,
+        (item) => item.clientPermissions.read === false && item.clientPermissions.write === false,
       ),
     ).toBe(true)
   })
@@ -38,9 +36,7 @@ describe('EMAS deployment configuration', () => {
     const uniqueFields = Object.fromEntries(
       manifest.collections.map((collection) => [
         collection.name,
-        collection.indexes
-          .filter((index) => index.unique)
-          .flatMap((index) => index.fields),
+        collection.indexes.filter((index) => index.unique).flatMap((index) => index.fields),
       ]),
     )
     expect(uniqueFields.users).toContain('emasUserId')
@@ -50,9 +46,9 @@ describe('EMAS deployment configuration', () => {
   })
 
   it('contains all uploadable function packages and the build command', () => {
-    const packageJson = JSON.parse(
-      readFileSync(join(workspace, 'package.json'), 'utf8'),
-    ) as { scripts: Record<string, string> }
+    const packageJson = JSON.parse(readFileSync(join(workspace, 'package.json'), 'utf8')) as {
+      scripts: Record<string, string>
+    }
     for (const name of [
       'gym-api',
       'gym-admin-api',

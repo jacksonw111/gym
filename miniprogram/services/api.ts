@@ -10,7 +10,8 @@ import type {
 } from '../shared/contracts'
 
 export type SessionView =
-  { authenticated: false } | { authenticated: true; user: User; role: UserRole }
+  | { authenticated: false }
+  | { authenticated: true; user: User; role: UserRole }
 
 export interface MemberHomeView {
   authenticated: boolean
