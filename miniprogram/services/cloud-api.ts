@@ -125,7 +125,8 @@ export class CloudApi implements GymApi {
       {
         name: input.name,
         avatarUrl: input.avatarUrl,
-        phoneCloudId: input.phoneCloudId,
+        ...(input.phoneCloudId ? { phoneCloudId: input.phoneCloudId } : {}),
+        ...(input.phone ? { phone: input.phone } : {}),
       },
       input.requestId,
     )

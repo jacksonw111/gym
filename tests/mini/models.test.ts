@@ -4,7 +4,11 @@ import {
   getEnvironment,
   resolveEnvironment,
 } from '../../miniprogram/config/env'
-import { loginPageUrl, registrationReady } from '../../miniprogram/models/auth'
+import {
+  isValidMainlandPhone,
+  loginPageUrl,
+  registrationReady,
+} from '../../miniprogram/models/auth'
 import {
   applyBulkAvailability,
   buildDefaultSchedule,
@@ -164,6 +168,12 @@ describe('member login flow', () => {
   it('builds explicit return destinations for profile and checkout', () => {
     expect(loginPageUrl('profile')).toBe('/pages/member-login/member-login?returnTo=profile')
     expect(loginPageUrl('checkout')).toBe('/pages/member-login/member-login?returnTo=checkout')
+  })
+
+  it('accepts only an eleven-digit mainland mobile number for manual login', () => {
+    expect(isValidMainlandPhone('13800000000')).toBe(true)
+    expect(isValidMainlandPhone('1380000000')).toBe(false)
+    expect(isValidMainlandPhone('12345678901')).toBe(false)
   })
 })
 

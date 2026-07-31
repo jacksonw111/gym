@@ -1,5 +1,5 @@
 import { getEnvironment } from '../../config/env'
-import { type LoginReturn, registrationReady } from '../../models/auth'
+import { isValidMainlandPhone, type LoginReturn, registrationReady } from '../../models/auth'
 import { createRequestId, getApi } from '../../services/api'
 
 interface ChooseAvatarEvent extends WechatMiniprogram.BaseEvent {
@@ -7,6 +7,10 @@ interface ChooseAvatarEvent extends WechatMiniprogram.BaseEvent {
 }
 
 interface NicknameInputEvent extends WechatMiniprogram.BaseEvent {
+  detail: { value: string }
+}
+
+interface PhoneInputEvent extends WechatMiniprogram.BaseEvent {
   detail: { value: string }
 }
 
@@ -20,6 +24,8 @@ Page({
     nickname: '',
     returnTo: 'profile' as LoginReturn,
     ready: false,
+    manualPhone: '',
+    manualPhoneValid: false,
     submitting: false,
     error: '',
     testLoginEnabled: false,
@@ -50,15 +56,35 @@ Page({
     })
   },
 
+  changeManualPhone(event: PhoneInputEvent) {
+    const manualPhone = event.detail.value.trim()
+    this.setData({
+      manualPhone,
+      manualPhoneValid: isValidMainlandPhone(manualPhone),
+      error: '',
+    })
+  },
+
   async authorizePhone(event: PhoneNumberEvent) {
     if (this.data.submitting || !this.data.ready) {
       return
     }
     const phoneCloudId = event.detail.cloudID
     if (!phoneCloudId) {
-      this.setData({ error: '模拟器无法授权真实手机号，请使用下方的“模拟器测试登录”。' })
+      this.setData({ error: '未获得微信手机号授权，你可以手动填写手机号登录。' })
       return
     }
+    await this.submitRegistration({ phoneCloudId })
+  },
+
+  async manualLogin() {
+    if (this.data.submitting || !this.data.ready || !this.data.manualPhoneValid) {
+      return
+    }
+    await this.submitRegistration({ phone: this.data.manualPhone })
+  },
+
+  async submitRegistration(phoneInput: { phoneCloudId?: string; phone?: string }) {
     this.setData({ submitting: true, error: '' })
     try {
       const extension = this.data.avatarPath.match(/\.[a-zA-Z0-9]+$/)?.[0] ?? '.jpg'
@@ -69,7 +95,7 @@ Page({
       await getApi().registerMember({
         name: this.data.nickname.trim(),
         avatarUrl: uploaded.fileID,
-        phoneCloudId,
+        ...phoneInput,
         requestId: createRequestId('register'),
       })
       wx.showToast({ title: '登录成功', icon: 'success' })

@@ -118,7 +118,8 @@ export interface CoachCancelInput extends LessonMutationInput {
 export interface RegisterMemberInput {
   name: string
   avatarUrl: string
-  phoneCloudId: string
+  phoneCloudId?: string
+  phone?: string
   requestId: string
 }
 

@@ -66,10 +66,32 @@
 
 .phone-button {
   width: 100%;
+  margin-top: 20rpx;
 }
 
 .phone-button[disabled] {
   opacity: 0.42;
+}
+
+.phone-input {
+  box-sizing: border-box;
+}
+
+.phone-divider {
+  display: flex;
+  margin: 24rpx 0 4rpx;
+  color: var(--color-ink-soft);
+  font-size: 20rpx;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.phone-divider::before,
+.phone-divider::after {
+  height: 2rpx;
+  background: var(--color-line);
+  content: '';
+  flex: 1;
 }
 
 .privacy-note {

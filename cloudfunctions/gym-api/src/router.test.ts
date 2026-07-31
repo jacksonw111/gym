@@ -153,6 +153,33 @@ describe('CloudBase action router', () => {
     expect(resolvePhoneNumber).toHaveBeenCalledTimes(2)
   })
 
+  it('registerMember 接受用户手动填写的手机号并标记为未验证', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+
+    const response = await router({
+      action: 'registerMember',
+      requestId: 'register-manual-phone',
+      payload: {
+        name: '手动填写会员',
+        avatarUrl: 'cloud://test-env/avatar/manual.jpg',
+        phone: '13800000000',
+      },
+      identity: { openId: 'manual-phone-openid' },
+    })
+
+    expect(response).toMatchObject({
+      ok: true,
+      data: {
+        phone: '13800000000',
+        phoneVerified: false,
+      },
+    })
+  })
+
   it('模拟器测试登录只在测试环境创建会员', async () => {
     const developmentStore = new MemoryStore(createDevelopmentSeed())
     const developmentRouter = createRouter(developmentStore, {

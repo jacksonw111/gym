@@ -29,15 +29,32 @@
       bindinput="changeNickname"
      />
     <text class="field-label">03 · 联系手机号</text>
+    <input
+      class="nickname-input phone-input"
+      type="number"
+      maxlength="11"
+      value="{{manualPhone}}"
+      placeholder="手动填写手机号"
+      bindinput="changeManualPhone"
+     />
     <button
       class="primary-button phone-button"
+      disabled="{{!ready || !manualPhoneValid || submitting}}"
+      loading="{{submitting}}"
+      bindtap="manualLogin"
+    >{{submitting ? '正在建立档案' : '使用填写手机号登录'}}</button>
+    <view class="phone-divider">
+      <text>或者</text>
+    </view>
+    <button
+      class="secondary-button phone-button"
       open-type="getPhoneNumber"
       disabled="{{!ready || submitting}}"
       loading="{{submitting}}"
       bindgetphonenumber="authorizePhone"
-    >{{submitting ? '正在建立档案' : '授权手机号并登录'}}</button>
+    >微信授权手机号并登录</button>
     <text wx:if="{{!ready}}" class="login-hint">请先选择头像并填写昵称，真实登录按钮才会启用。</text>
-    <text class="privacy-note">微信会在你点击上方按钮后显示手机号授权确认。</text>
+    <text class="privacy-note">手动填写的号码仅作为联系信息保存，不代表已经过微信验证。</text>
     <view wx:if="{{testLoginEnabled}}" class="test-login">
       <view class="test-login__divider">
         <text>开发工具测试</text>

@@ -150,6 +150,32 @@ describe('production CloudApi adapter', () => {
     })
   })
 
+  it('sends a manually entered phone when WeChat authorization is unavailable', async () => {
+    const { cloudCall } = installWechat(async ({ data }) => {
+      if (data.action === 'registerMember') return ok(user)
+      return ok(bootstrap())
+    })
+
+    await new CloudApi().registerMember({
+      name: '陈澄',
+      avatarUrl: 'cloud://test/avatar.jpg',
+      phone: '13800000000',
+      requestId: 'register-manual-1',
+    })
+
+    expect(cloudCall).toHaveBeenCalledWith({
+      name: 'gym-api',
+      data: expect.objectContaining({
+        action: 'registerMember',
+        payload: {
+          name: '陈澄',
+          avatarUrl: 'cloud://test/avatar.jpg',
+          phone: '13800000000',
+        },
+      }),
+    })
+  })
+
   it('uses the dedicated development-only action for simulator login', async () => {
     const { cloudCall } = installWechat(async ({ data }) => {
       if (data.action === 'registerTestMember') return ok(user)

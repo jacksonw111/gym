@@ -352,23 +352,36 @@ export const createRouter = (
           if (!openId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
           const name = requiredString(payload, 'name').trim()
           const avatarUrl = requiredString(payload, 'avatarUrl')
-          const phoneCloudId = requiredString(payload, 'phoneCloudId')
+          const phoneCloudId =
+            typeof payload.phoneCloudId === 'string' ? payload.phoneCloudId : undefined
+          const manualPhone = typeof payload.phone === 'string' ? payload.phone.trim() : undefined
           if (name.length < 1 || name.length > 32) {
             throw new ApiError('INVALID_REQUEST', '昵称长度应为 1—32 个字符')
           }
           if (!avatarUrl.startsWith('cloud://')) {
             throw new ApiError('INVALID_REQUEST', '头像必须来自当前云存储')
           }
-          if (!environment.resolvePhoneNumber) {
+          if (Boolean(phoneCloudId) === Boolean(manualPhone)) {
+            throw new ApiError('INVALID_REQUEST', '请选择微信授权或手动填写手机号')
+          }
+          if (manualPhone && !/^1[3-9]\d{9}$/.test(manualPhone)) {
+            throw new ApiError('INVALID_REQUEST', '手机号格式不正确')
+          }
+          if (phoneCloudId && !environment.resolvePhoneNumber) {
             throw new ApiError('SERVICE_UNAVAILABLE', '手机号授权服务未配置')
           }
-          const phone = await environment.resolvePhoneNumber(phoneCloudId)
+          const phone = phoneCloudId
+            ? await environment.resolvePhoneNumber?.(phoneCloudId)
+            : manualPhone
+          if (!phone) throw new ApiError('INVALID_REQUEST', '手机号不能为空')
+          const phoneVerified = Boolean(phoneCloudId)
           const user = await store.transaction(() => {
             const existing = store.users.find((item) => item.openId === openId)
             if (existing) {
               existing.name = name
               existing.avatarUrl = avatarUrl
               existing.phone = phone
+              existing.phoneVerified = phoneVerified
               if (!existing.roles.includes('member')) existing.roles.push('member')
               return existing
             }
@@ -378,6 +391,7 @@ export const createRouter = (
               name,
               avatarUrl,
               phone,
+              phoneVerified,
               roles: ['member'],
             }
             store.users.push(created)
@@ -401,6 +415,7 @@ export const createRouter = (
             if (existing) {
               existing.name = name
               existing.phone = '13800000000'
+              existing.phoneVerified = false
               if (!existing.roles.includes('member')) existing.roles.push('member')
               return existing
             }
@@ -409,6 +424,7 @@ export const createRouter = (
               openId,
               name,
               phone: '13800000000',
+              phoneVerified: false,
               roles: ['member'],
             }
             store.users.push(created)

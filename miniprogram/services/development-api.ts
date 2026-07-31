@@ -60,7 +60,8 @@ export class DevelopmentApi implements GymApi {
     const next = this.store.update((draft) => {
       draft.user.name = input.name.trim()
       draft.user.avatarUrl = input.avatarUrl
-      draft.user.phone = draft.user.phone ?? '13800000000'
+      draft.user.phone = input.phone ?? draft.user.phone ?? '13800000000'
+      draft.user.phoneVerified = Boolean(input.phoneCloudId)
     })
     return { authenticated: true, user: next.user, role: next.role }
   }
@@ -69,6 +70,7 @@ export class DevelopmentApi implements GymApi {
     const next = this.store.update((draft) => {
       draft.user.name = input.name?.trim() || '模拟器测试会员'
       draft.user.phone = '13800000000'
+      draft.user.phoneVerified = false
     })
     return { authenticated: true, user: next.user, role: next.role }
   }

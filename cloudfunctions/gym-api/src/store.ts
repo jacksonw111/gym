@@ -6,6 +6,7 @@ export interface User {
   name: string
   avatarUrl?: string
   phone?: string
+  phoneVerified?: boolean
   roles: UserRole[]
 }
 
