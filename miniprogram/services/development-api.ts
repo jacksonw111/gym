@@ -50,6 +50,10 @@ export class DevelopmentApi implements GymApi {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
+  async uploadAvatar(filePath: string): Promise<string> {
+    return filePath
+  }
+
   async getSession(): Promise<SessionView> {
     const state = this.store.read()
     return { authenticated: true, user: state.user, role: state.role }
@@ -60,7 +64,7 @@ export class DevelopmentApi implements GymApi {
       draft.user.name = input.name.trim()
       draft.user.avatarUrl = input.avatarUrl
       draft.user.phone = input.phone ?? draft.user.phone ?? '13800000000'
-      draft.user.phoneVerified = Boolean(input.phoneCloudId)
+      draft.user.phoneVerified = Boolean(input.phoneCode)
     })
     return { authenticated: true, user: next.user, role: next.role }
   }

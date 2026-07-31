@@ -19,7 +19,7 @@ interface ManualLoginEvent extends WechatMiniprogram.BaseEvent {
 }
 
 interface PhoneNumberEvent extends WechatMiniprogram.BaseEvent {
-  detail: { cloudID?: string }
+  detail: { code?: string }
 }
 
 Page({
@@ -64,15 +64,15 @@ Page({
       this.setData({ error: inputError })
       return
     }
-    const phoneCloudId = event.detail.cloudID
-    if (!phoneCloudId) {
+    const phoneCode = event.detail.code
+    if (!phoneCode) {
       this.setData({
         manualPhoneMode: true,
         error: '未获得微信手机号授权，请手动填写手机号登录。',
       })
       return
     }
-    await this.submitRegistration({ phoneCloudId }, this.data.nickname)
+    await this.submitRegistration({ phoneCode }, this.data.nickname)
   },
 
   async manualLogin(event: ManualLoginEvent) {
@@ -90,20 +90,13 @@ Page({
     await this.submitRegistration({ phone }, nickname)
   },
 
-  async submitRegistration(
-    phoneInput: { phoneCloudId?: string; phone?: string },
-    nickname: string,
-  ) {
+  async submitRegistration(phoneInput: { phoneCode?: string; phone?: string }, nickname: string) {
     this.setData({ submitting: true, error: '' })
     try {
-      const extension = this.data.avatarPath.match(/\.[a-zA-Z0-9]+$/)?.[0] ?? '.jpg'
-      const uploaded = await wx.cloud.uploadFile({
-        cloudPath: `avatars/${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extension}`,
-        filePath: this.data.avatarPath,
-      })
+      const avatarUrl = await getApi().uploadAvatar(this.data.avatarPath)
       await getApi().registerMember({
         name: nickname.trim(),
-        avatarUrl: uploaded.fileID,
+        avatarUrl,
         ...phoneInput,
         requestId: createRequestId('register'),
       })

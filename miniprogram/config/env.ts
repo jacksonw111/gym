@@ -1,22 +1,32 @@
 export type ApplicationMode = 'development' | 'production'
 
+export interface EmasClientConfig {
+  appId: string
+  spaceId: string
+  clientSecret: string
+  endpoint: string
+}
+
 export interface EnvironmentInput {
   mode: ApplicationMode
-  cloudEnvId?: string
-  useDefaultCloudEnvironment: boolean
+  emas: EmasClientConfig
   useLocalData: boolean
   testPaymentEnabled: boolean
 }
 
 export type EnvironmentConfig = EnvironmentInput
 
+const hasCompleteEmasConfig = (config: EmasClientConfig): boolean =>
+  Boolean(
+    config.appId.trim() &&
+    config.spaceId.trim() &&
+    config.clientSecret.trim() &&
+    config.endpoint.trim(),
+  )
+
 export const resolveEnvironment = (input: EnvironmentInput): EnvironmentConfig => {
-  if (
-    input.mode === 'production' &&
-    !input.cloudEnvId?.trim() &&
-    !input.useDefaultCloudEnvironment
-  ) {
-    throw new Error('生产环境必须配置 CloudBase 环境或启用微信默认云环境')
+  if (input.mode === 'production' && !hasCompleteEmasConfig(input.emas)) {
+    throw new Error('生产环境必须配置 EMAS 服务空间')
   }
   if (input.mode === 'production' && input.testPaymentEnabled) {
     throw new Error('生产环境禁止测试支付')
@@ -28,20 +38,7 @@ export const resolveEnvironment = (input: EnvironmentInput): EnvironmentConfig =
   return input
 }
 
-export interface CloudInitializationOptions {
-  traceUser: true
-  env?: string
-}
-
-export const getCloudInitializationOptions = (
-  environment: EnvironmentConfig,
-): CloudInitializationOptions => ({
-  traceUser: true,
-  ...(environment.cloudEnvId?.trim() ? { env: environment.cloudEnvId.trim() } : {}),
-})
-
-const CLOUD_ENV_ID = 'cloud1-d1gmh1lu77f6e8c06'
-const USE_DEFAULT_CLOUD_ENVIRONMENT = false
+const localConfig = require('./emas.local.js') as EmasClientConfig
 const USE_LOCAL_DEVELOPMENT_DATA = false
 const ENABLE_TEST_PAYMENT_IN_NON_RELEASE_BUILDS = true
 
@@ -54,8 +51,7 @@ export const getEnvironment = (): EnvironmentConfig => {
 
   return resolveEnvironment({
     mode,
-    cloudEnvId: CLOUD_ENV_ID,
-    useDefaultCloudEnvironment: USE_DEFAULT_CLOUD_ENVIRONMENT,
+    emas: localConfig,
     useLocalData: mode === 'development' && USE_LOCAL_DEVELOPMENT_DATA,
     testPaymentEnabled: mode === 'development' && ENABLE_TEST_PAYMENT_IN_NON_RELEASE_BUILDS,
   })

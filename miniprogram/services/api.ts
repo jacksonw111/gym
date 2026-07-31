@@ -10,8 +10,7 @@ import type {
 } from '../shared/contracts'
 
 export type SessionView =
-  | { authenticated: false }
-  | { authenticated: true; user: User; role: UserRole }
+  { authenticated: false } | { authenticated: true; user: User; role: UserRole }
 
 export interface MemberHomeView {
   authenticated: boolean
@@ -118,12 +117,13 @@ export interface CoachCancelInput extends LessonMutationInput {
 export interface RegisterMemberInput {
   name: string
   avatarUrl: string
-  phoneCloudId?: string
+  phoneCode?: string
   phone?: string
   requestId: string
 }
 
 export interface GymApi {
+  uploadAvatar(filePath: string): Promise<string>
   getSession(): Promise<SessionView>
   registerMember(input: RegisterMemberInput): Promise<SessionView>
   switchRole(role: UserRole): Promise<SessionView>

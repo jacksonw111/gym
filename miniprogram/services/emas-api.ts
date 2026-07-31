@@ -80,10 +80,22 @@ interface BootstrapData {
   orders?: BootstrapOrder[]
 }
 
-interface WechatAdapter {
-  cloud: {
-    callFunction(input: { name: string; data: ApiRequest<unknown> }): Promise<{ result?: unknown }>
+export interface EmasClient {
+  function: {
+    invoke(
+      name: string,
+      data: ApiRequest<unknown>,
+    ): Promise<{ success?: boolean; result?: unknown }>
   }
+  file: {
+    uploadFile(input: {
+      filePath: string
+      cloudPath: string
+    }): Promise<{ fileUrl?: string; filePath?: string }>
+  }
+}
+
+interface WechatAdapter {
   requestPayment(
     input: PaymentParameters & {
       success(): void
@@ -95,7 +107,7 @@ interface WechatAdapter {
 const getWechat = (): WechatAdapter => (globalThis as unknown as { wx: WechatAdapter }).wx
 
 const mutationRequestId = (): string =>
-  `cloud-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  `emas-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
 const statusText = {
   booked: '已预约',
@@ -105,10 +117,25 @@ const statusText = {
   completed: '已完成',
 }
 
-export class CloudApi implements GymApi {
+export class EmasApi implements GymApi {
   private activeRole?: UserRole
 
-  constructor(private readonly testPaymentEnabled = false) {}
+  constructor(
+    private readonly emas: EmasClient,
+    private readonly testPaymentEnabled = false,
+    private readonly ready: Promise<unknown> = Promise.resolve(),
+  ) {}
+
+  async uploadAvatar(filePath: string): Promise<string> {
+    await this.ready
+    const extension = filePath.match(/\.[a-zA-Z0-9]+$/)?.[0] ?? '.jpg'
+    const uploaded = await this.emas.file.uploadFile({
+      filePath,
+      cloudPath: `/avatars/${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extension}`,
+    })
+    if (!uploaded.fileUrl) throw new Error('头像上传失败，请重试')
+    return uploaded.fileUrl
+  }
 
   async getSession(): Promise<SessionView> {
     const data = await this.bootstrap()
@@ -124,7 +151,7 @@ export class CloudApi implements GymApi {
       {
         name: input.name,
         avatarUrl: input.avatarUrl,
-        ...(input.phoneCloudId ? { phoneCloudId: input.phoneCloudId } : {}),
+        ...(input.phoneCode ? { phoneCode: input.phoneCode } : {}),
         ...(input.phone ? { phone: input.phone } : {}),
       },
       input.requestId,
@@ -410,19 +437,20 @@ export class CloudApi implements GymApi {
     requestId = mutationRequestId(),
   ): Promise<TData> {
     const request: ApiRequest<TPayload> = { action, requestId, payload }
-    let response: { result?: unknown }
+    let response: { success?: boolean; result?: unknown }
     try {
-      response = await getWechat().cloud.callFunction({
-        name: 'gym-api',
-        data: request,
-      })
+      await this.ready
+      response = await this.emas.function.invoke('gym-api', request)
     } catch (error) {
       const errMsg =
         error && typeof error === 'object' && 'errMsg' in error && typeof error.errMsg === 'string'
           ? error.errMsg
-          : '云函数调用失败，请检查云环境与函数配置'
+          : error instanceof Error
+            ? error.message
+            : 'EMAS 服务调用失败，请检查服务空间与云函数配置'
       throw new Error(errMsg)
     }
+    if (response.success === false) throw new Error('EMAS 服务调用失败')
     const result = response.result as ApiResponse<TData>
     if (!result.ok) {
       throw new Error(result.error.message)

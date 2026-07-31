@@ -1,7 +1,8 @@
-import { getCloudInitializationOptions, getEnvironment } from './config/env'
+import MPServerless from '@alicloud/mpserverless-sdk'
+import { getEnvironment } from './config/env'
 import { registerApi } from './services/api'
-import { CloudApi } from './services/cloud-api'
 import { DevelopmentApi } from './services/development-api'
+import { EmasApi, type EmasClient } from './services/emas-api'
 
 App({
   globalData: {},
@@ -9,12 +10,13 @@ App({
   onLaunch() {
     const environment = getEnvironment()
 
-    if (!environment.useLocalData) {
-      wx.cloud.init(getCloudInitializationOptions(environment))
-      registerApi(new CloudApi(environment.testPaymentEnabled))
+    if (environment.useLocalData) {
+      registerApi(new DevelopmentApi())
       return
     }
 
-    registerApi(new DevelopmentApi())
+    const emas = new MPServerless(wx, environment.emas)
+    const ready = emas.init()
+    registerApi(new EmasApi(emas as unknown as EmasClient, environment.testPaymentEnabled, ready))
   },
 })

@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  getCloudInitializationOptions,
-  getEnvironment,
-  resolveEnvironment,
-} from '../../miniprogram/config/env'
+import { getEnvironment, resolveEnvironment } from '../../miniprogram/config/env'
 import {
   isValidMainlandPhone,
   loginPageUrl,
@@ -67,7 +63,7 @@ const bookedLesson = (id: string, startsAt: string, coachId = 'coach-a'): Lesson
 })
 
 describe('mini program environment protection', () => {
-  it('connects the app to the configured CloudBase environment', () => {
+  it('connects the app to the configured EMAS service space', () => {
     const root = globalThis as unknown as {
       wx?: { getAccountInfoSync(): { miniProgram: { envVersion: string } } }
     }
@@ -78,82 +74,107 @@ describe('mini program environment protection', () => {
 
     try {
       const environment = getEnvironment()
-      expect(environment.cloudEnvId).toBe('cloud1-d1gmh1lu77f6e8c06')
-      expect(environment.useDefaultCloudEnvironment).toBe(false)
+      expect(environment.emas).toMatchObject({
+        appId: 'wx9c250ff0a2fb8af4',
+        spaceId: 'mp-823fb75d-0fd0-4255-89fd-9d4a5303cc38',
+        endpoint: 'https://api.next.bspapp.com',
+      })
       expect(environment.useLocalData).toBe(false)
       expect(environment.testPaymentEnabled).toBe(true)
-      expect(getCloudInitializationOptions(environment)).toEqual({
-        traceUser: true,
-        env: 'cloud1-d1gmh1lu77f6e8c06',
-      })
     } finally {
       root.wx = previousWx
     }
   })
 
   it('uses the real cloud backend by default in development', () => {
+    const emas = {
+      appId: 'wx-test',
+      spaceId: 'space-test',
+      clientSecret: 'secret-test',
+      endpoint: 'https://api.next.bspapp.com',
+    }
     expect(
       resolveEnvironment({
         mode: 'development',
-        useDefaultCloudEnvironment: true,
+        emas,
         useLocalData: false,
         testPaymentEnabled: false,
       }),
     ).toEqual({
       mode: 'development',
-      useDefaultCloudEnvironment: true,
+      emas,
       useLocalData: false,
       testPaymentEnabled: false,
     })
   })
 
   it('only enables mock data when it is explicitly requested', () => {
+    const emas = {
+      appId: 'wx-test',
+      spaceId: 'space-test',
+      clientSecret: 'secret-test',
+      endpoint: 'https://api.next.bspapp.com',
+    }
     expect(
       resolveEnvironment({
         mode: 'development',
-        useDefaultCloudEnvironment: true,
+        emas,
         useLocalData: true,
         testPaymentEnabled: true,
       }),
     ).toEqual({
       mode: 'development',
-      useDefaultCloudEnvironment: true,
+      emas,
       useLocalData: true,
       testPaymentEnabled: true,
     })
   })
 
-  it('allows the WeChat default cloud environment in production', () => {
+  it('accepts a complete EMAS configuration in production', () => {
+    const emas = {
+      appId: 'wx-prod',
+      spaceId: 'space-prod',
+      clientSecret: 'secret-prod',
+      endpoint: 'https://api.next.bspapp.com',
+    }
     const environment = resolveEnvironment({
       mode: 'production',
-      useDefaultCloudEnvironment: true,
+      emas,
       useLocalData: false,
       testPaymentEnabled: false,
     })
 
     expect(environment).toEqual({
       mode: 'production',
-      useDefaultCloudEnvironment: true,
+      emas,
       useLocalData: false,
       testPaymentEnabled: false,
     })
-    expect(getCloudInitializationOptions(environment)).toEqual({ traceUser: true })
   })
 
-  it('rejects production without any CloudBase option or with test payment enabled', () => {
+  it('rejects production without EMAS configuration or with test payment enabled', () => {
     expect(() =>
       resolveEnvironment({
         mode: 'production',
-        useDefaultCloudEnvironment: false,
+        emas: {
+          appId: '',
+          spaceId: '',
+          clientSecret: '',
+          endpoint: '',
+        },
         useLocalData: false,
         testPaymentEnabled: false,
       }),
-    ).toThrow('生产环境必须配置 CloudBase 环境或启用微信默认云环境')
+    ).toThrow('生产环境必须配置 EMAS')
     expect(() =>
       resolveEnvironment({
         mode: 'production',
-        cloudEnvId: 'cloud-prod',
-        useDefaultCloudEnvironment: false,
+        emas: {
+          appId: 'wx-prod',
+          spaceId: 'space-prod',
+          clientSecret: 'secret-prod',
+          endpoint: 'https://api.next.bspapp.com',
+        },
         useLocalData: false,
         testPaymentEnabled: true,
       }),

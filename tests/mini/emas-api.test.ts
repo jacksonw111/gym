@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildPublicSlot } from '../../miniprogram/models/member'
-import { CloudApi } from '../../miniprogram/services/cloud-api'
+import { EmasApi, type EmasClient } from '../../miniprogram/services/emas-api'
 import type {
   ApiResponse,
   Lesson,
@@ -8,7 +8,7 @@ import type {
   UserRole,
 } from '../../miniprogram/shared/contracts'
 
-interface CloudCall {
+interface EmasCall {
   name: string
   data: {
     action: string
@@ -75,23 +75,34 @@ const ok = (data: unknown): { result: ApiResponse<unknown> } => ({
   result: { ok: true, data },
 })
 
-const installWechat = (
-  callFunction: (input: CloudCall) => Promise<{ result: ApiResponse<unknown> }>,
+let emasClient: EmasClient
+
+const createApi = (testPaymentEnabled = false): EmasApi =>
+  new EmasApi(emasClient, testPaymentEnabled)
+
+const installEmas = (
+  invokeHandler: (input: EmasCall) => Promise<{ result: ApiResponse<unknown> }>,
   requestPayment = vi.fn((input: { success(): void }) => input.success()),
 ) => {
-  const cloudCall = vi.fn(callFunction)
+  const invoke = vi.fn((name: string, data: EmasCall['data']) => invokeHandler({ name, data }))
+  const uploadFile = vi.fn(async () => ({
+    fileUrl: 'https://storage.example/avatar.jpg',
+    filePath: '/avatars/avatar.jpg',
+  }))
+  emasClient = {
+    function: { invoke },
+    file: { uploadFile },
+  }
   ;(
     globalThis as unknown as {
       wx: {
-        cloud: { callFunction: typeof cloudCall }
         requestPayment: typeof requestPayment
       }
     }
   ).wx = {
-    cloud: { callFunction: cloudCall },
     requestPayment,
   }
-  return { cloudCall, requestPayment }
+  return { invoke, requestPayment, uploadFile }
 }
 
 afterEach(() => {
@@ -99,9 +110,21 @@ afterEach(() => {
   delete (globalThis as unknown as { wx?: unknown }).wx
 })
 
-describe('production CloudApi adapter', () => {
+describe('production EmasApi adapter', () => {
+  it('uploads member avatars to EMAS storage', async () => {
+    const { uploadFile } = installEmas(async () => ok(bootstrap()))
+
+    await expect(createApi().uploadAvatar('/tmp/avatar.png')).resolves.toBe(
+      'https://storage.example/avatar.jpg',
+    )
+    expect(uploadFile).toHaveBeenCalledWith({
+      filePath: '/tmp/avatar.png',
+      cloudPath: expect.stringMatching(/^\/avatars\/.+\.png$/),
+    })
+  })
+
   it('returns a guest session without manufacturing a user', async () => {
-    installWechat(async () =>
+    installEmas(async () =>
       ok(
         bootstrap({
           authenticated: false,
@@ -114,7 +137,7 @@ describe('production CloudApi adapter', () => {
         }),
       ),
     )
-    const api = new CloudApi()
+    const api = createApi()
 
     await expect(api.getSession()).resolves.toEqual({ authenticated: false })
     await expect(api.getMemberHome()).resolves.toMatchObject({
@@ -124,73 +147,73 @@ describe('production CloudApi adapter', () => {
   })
 
   it('sends only cloud-authorized registration fields', async () => {
-    const { cloudCall } = installWechat(async ({ data }) => {
+    const { invoke } = installEmas(async ({ data }) => {
       if (data.action === 'registerMember') return ok(user)
       return ok(bootstrap())
     })
-    const api = new CloudApi()
+    const api = createApi()
 
     await api.registerMember({
       name: '陈澄',
-      avatarUrl: 'cloud://test/avatar.jpg',
-      phoneCloudId: 'phone-cloud-id',
+      avatarUrl: 'https://storage.example/avatar.jpg',
+      phoneCode: 'phone-code',
       requestId: 'register-1',
     })
 
-    expect(cloudCall).toHaveBeenCalledWith({
-      name: 'gym-api',
-      data: expect.objectContaining({
+    expect(invoke).toHaveBeenCalledWith(
+      'gym-api',
+      expect.objectContaining({
         action: 'registerMember',
         payload: {
           name: '陈澄',
-          avatarUrl: 'cloud://test/avatar.jpg',
-          phoneCloudId: 'phone-cloud-id',
+          avatarUrl: 'https://storage.example/avatar.jpg',
+          phoneCode: 'phone-code',
         },
       }),
-    })
+    )
   })
 
   it('sends a manually entered phone when WeChat authorization is unavailable', async () => {
-    const { cloudCall } = installWechat(async ({ data }) => {
+    const { invoke } = installEmas(async ({ data }) => {
       if (data.action === 'registerMember') return ok(user)
       return ok(bootstrap())
     })
 
-    await new CloudApi().registerMember({
+    await createApi().registerMember({
       name: '陈澄',
-      avatarUrl: 'cloud://test/avatar.jpg',
+      avatarUrl: 'https://storage.example/avatar.jpg',
       phone: '13800000000',
       requestId: 'register-manual-1',
     })
 
-    expect(cloudCall).toHaveBeenCalledWith({
-      name: 'gym-api',
-      data: expect.objectContaining({
+    expect(invoke).toHaveBeenCalledWith(
+      'gym-api',
+      expect.objectContaining({
         action: 'registerMember',
         payload: {
           name: '陈澄',
-          avatarUrl: 'cloud://test/avatar.jpg',
+          avatarUrl: 'https://storage.example/avatar.jpg',
           phone: '13800000000',
         },
       }),
-    })
+    )
   })
 
   it('preserves the real WeChat cloud error message when the request never reaches the function', async () => {
-    installWechat(async () => {
+    installEmas(async () => {
       throw {
         errCode: -501005,
-        errMsg: 'cloud.callFunction:fail function not found',
+        errMsg: 'function.invoke:fail function not found',
       }
     })
 
-    await expect(new CloudApi().getSession()).rejects.toThrow(
-      'cloud.callFunction:fail function not found',
+    await expect(createApi().getSession()).rejects.toThrow(
+      'function.invoke:fail function not found',
     )
   })
 
   it('reads activeRole and sends it on subsequent bootstrap requests', async () => {
-    const { cloudCall } = installWechat(async () =>
+    const { invoke } = installEmas(async () =>
       ok(
         bootstrap({
           profile: { ...user, roles: ['coach'] },
@@ -199,34 +222,34 @@ describe('production CloudApi adapter', () => {
         }),
       ),
     )
-    const api = new CloudApi()
+    const api = createApi()
 
     expect(await api.getSession()).toMatchObject({ role: 'coach' })
     await api.getCoachDashboard('2026-08-02')
 
-    const bootstrapCalls = cloudCall.mock.calls
-      .map(([input]) => input.data)
+    const bootstrapCalls = invoke.mock.calls
+      .map(([, data]) => data)
       .filter((data) => data.action === 'bootstrap')
     expect(bootstrapCalls.at(-1)?.payload).toMatchObject({ activeRole: 'coach' })
   })
 
   it('sends the switched role on the confirming bootstrap request', async () => {
-    const { cloudCall } = installWechat(async ({ data }) =>
+    const { invoke } = installEmas(async ({ data }) =>
       ok(bootstrap({ activeRole: data.payload.activeRole ?? 'member' })),
     )
-    const api = new CloudApi()
+    const api = createApi()
 
     await api.getSession()
     expect(await api.switchRole('coach')).toMatchObject({ role: 'coach' })
 
-    const bootstrapCalls = cloudCall.mock.calls
-      .map(([input]) => input.data)
+    const bootstrapCalls = invoke.mock.calls
+      .map(([, data]) => data)
       .filter((data) => data.action === 'bootstrap')
     expect(bootstrapCalls.at(-1)?.payload).toEqual({ activeRole: 'coach' })
   })
 
   it('merges a booked lesson into the remote schedule and generates its label', async () => {
-    installWechat(async ({ data }) => {
+    installEmas(async ({ data }) => {
       if (data.action === 'getSchedule') {
         return ok([
           {
@@ -240,7 +263,7 @@ describe('production CloudApi adapter', () => {
       }
       return ok(bootstrap({ lessons: [bookedLesson] }))
     })
-    const schedule = await new CloudApi().getCoachSchedule('coach-1', '2026-08-02')
+    const schedule = await createApi().getCoachSchedule('coach-1', '2026-08-02')
     const slot = schedule.slots[0]
 
     expect(slot).toMatchObject({
@@ -258,9 +281,9 @@ describe('production CloudApi adapter', () => {
   })
 
   it('never substitutes the current coach profile for missing member details', async () => {
-    installWechat(async () => ok(bootstrap({ activeRole: 'coach', lessons: [bookedLesson] })))
+    installEmas(async () => ok(bootstrap({ activeRole: 'coach', lessons: [bookedLesson] })))
 
-    const dashboard = await new CloudApi().getCoachDashboard('2026-08-02')
+    const dashboard = await createApi().getCoachDashboard('2026-08-02')
 
     expect(dashboard.lessons[0]).toMatchObject({
       memberName: '会员信息未提供',
@@ -276,7 +299,7 @@ describe('production CloudApi adapter', () => {
       signType: 'RSA',
       paySign: 'signed',
     }
-    const { cloudCall, requestPayment } = installWechat(async ({ data }) => {
+    const { invoke, requestPayment } = installEmas(async ({ data }) => {
       if (data.action === 'purchase') {
         return ok({ order: { id: 'order-1' }, payment })
       }
@@ -288,7 +311,7 @@ describe('production CloudApi adapter', () => {
       )
     })
 
-    const result = await new CloudApi().purchasePackage({
+    const result = await createApi().purchasePackage({
       productId: 'product-1',
       coachId: 'coach-1',
       requestId: 'purchase-request-1',
@@ -299,13 +322,11 @@ describe('production CloudApi adapter', () => {
       membership: expect.objectContaining({ id: 'membership-new' }),
     })
     expect(requestPayment).toHaveBeenCalledWith(expect.objectContaining(payment))
-    expect(cloudCall.mock.calls.filter(([input]) => input.data.action === 'purchase')).toHaveLength(
-      1,
-    )
+    expect(invoke.mock.calls.filter(([, data]) => data.action === 'purchase')).toHaveLength(1)
   })
 
   it('settles an explicit cloud test purchase without opening WeChat Pay', async () => {
-    const { cloudCall, requestPayment } = installWechat(async ({ data }) => {
+    const { invoke, requestPayment } = installEmas(async ({ data }) => {
       if (data.action === 'purchase') {
         return ok({ order: { id: 'order-test' }, testPayment: true })
       }
@@ -320,7 +341,7 @@ describe('production CloudApi adapter', () => {
       )
     })
 
-    const result = await new CloudApi(true).purchasePackage({
+    const result = await createApi(true).purchasePackage({
       productId: 'product-1',
       coachId: 'coach-1',
       requestId: 'purchase-test-request',
@@ -331,14 +352,12 @@ describe('production CloudApi adapter', () => {
       membership: expect.objectContaining({ id: 'membership-test' }),
     })
     expect(requestPayment).not.toHaveBeenCalled()
-    expect(cloudCall.mock.calls.some(([input]) => input.data.action === 'createDevPayment')).toBe(
-      true,
-    )
+    expect(invoke.mock.calls.some(([, data]) => data.action === 'createDevPayment')).toBe(true)
   })
 
   it('keeps a pending order and rechecks it without creating or paying again', async () => {
     let paid = false
-    const { cloudCall, requestPayment } = installWechat(async ({ data }) => {
+    const { invoke, requestPayment } = installEmas(async ({ data }) => {
       if (data.action === 'purchase') {
         return ok({
           order: { id: 'order-pending' },
@@ -364,7 +383,7 @@ describe('production CloudApi adapter', () => {
         }),
       )
     })
-    const api = new CloudApi()
+    const api = createApi()
     const first = await api.purchasePackage({
       productId: 'product-1',
       coachId: 'coach-1',
@@ -390,14 +409,12 @@ describe('production CloudApi adapter', () => {
       status: 'paid',
       membership: expect.objectContaining({ id: 'membership-new' }),
     })
-    expect(cloudCall.mock.calls.filter(([input]) => input.data.action === 'purchase')).toHaveLength(
-      1,
-    )
+    expect(invoke.mock.calls.filter(([, data]) => data.action === 'purchase')).toHaveLength(1)
     expect(requestPayment).toHaveBeenCalledTimes(1)
   })
 
   it('uses the remote occupied flag without exposing another member', async () => {
-    installWechat(async ({ data }) => {
+    installEmas(async ({ data }) => {
       if (data.action === 'getSchedule') {
         return ok([
           {
@@ -411,7 +428,7 @@ describe('production CloudApi adapter', () => {
       return ok(bootstrap({ lessons: [] }))
     })
 
-    const slot = (await new CloudApi().getCoachSchedule('coach-1', '2026-08-02')).slots[0]
+    const slot = (await createApi().getCoachSchedule('coach-1', '2026-08-02')).slots[0]
 
     expect(slot).toMatchObject({ occupied: true, locked: true })
     if (!slot) throw new Error('测试时段不存在')
