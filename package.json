@@ -12,6 +12,7 @@
     "admin:test": "vitest run admin/src",
     "admin:typecheck": "tsc --noEmit -p admin/tsconfig.json",
     "emas:build": "node scripts/build-emas.mjs",
+    "emas:db-sync": "node scripts/sync-emas-database.mjs",
     "emas:deploy": "node scripts/deploy-emas.mjs",
     "verify:production-config": "node scripts/verify-production-config.mjs",
     "format": "biome format --write . && prettier --write \"miniprogram/**/*.{wxml,less}\"",

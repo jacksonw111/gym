@@ -43,6 +43,12 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Sync database collections and indexes
+        env:
+          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+        run: npm run emas:db-sync
+
       - name: Deploy core EMAS services
         env:
           ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
