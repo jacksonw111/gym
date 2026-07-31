@@ -38,10 +38,8 @@ export interface EmasRuntimeContext {
   mpserverless: {
     db: EmasDatabase
     user: {
-      getInfo(): Promise<{
-        success?: boolean
-        result?: { user?: { userId?: string } }
-      }>
+      // 云函数端 SDK 的 getInfo 直接返回 result 对象，与客户端返回结构不同
+      getInfo(): Promise<unknown>
     }
   }
   httpclient: RuntimeHttpClient
