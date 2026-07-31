@@ -2,7 +2,7 @@ import MPServerless from '@alicloud/mpserverless-sdk'
 import { getEnvironment } from './config/env'
 import { registerApi } from './services/api'
 import { DevelopmentApi } from './services/development-api'
-import { EmasApi, type EmasClient } from './services/emas-api'
+import { EmasApi, type EmasApplicationClient, initializeEmasClient } from './services/emas-api'
 
 App({
   globalData: {},
@@ -16,7 +16,8 @@ App({
     }
 
     const emas = new MPServerless(wx, environment.emas)
-    const ready = emas.init()
-    registerApi(new EmasApi(emas as unknown as EmasClient, environment.testPaymentEnabled, ready))
+    const client = emas as unknown as EmasApplicationClient
+    const ready = initializeEmasClient(client)
+    registerApi(new EmasApi(client, environment.testPaymentEnabled, ready))
   },
 })

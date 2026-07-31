@@ -95,6 +95,32 @@ export interface EmasClient {
   }
 }
 
+export interface EmasApplicationClient extends EmasClient {
+  init(): Promise<unknown>
+  user: {
+    authorize(options: { authProvider: 'wechat_openapi' }): Promise<unknown>
+    getInfo(): Promise<{
+      result?: {
+        user?: {
+          userId?: string
+        }
+      }
+    }>
+  }
+}
+
+export const initializeEmasClient = async (emas: EmasApplicationClient): Promise<void> => {
+  await emas.init()
+  const current = await emas.user.getInfo()
+  if (current.result?.user?.userId) return
+
+  await emas.user.authorize({ authProvider: 'wechat_openapi' })
+  const retried = await emas.user.getInfo()
+  if (!retried.result?.user?.userId) {
+    throw new Error('微信身份授权失败，请检查服务器域名后重新打开小程序')
+  }
+}
+
 interface WechatAdapter {
   requestPayment(
     input: PaymentParameters & {

@@ -111,6 +111,55 @@ afterEach(() => {
 })
 
 describe('production EmasApi adapter', () => {
+  it('reauthorizes when SDK initialization completes without an authenticated user', async () => {
+    const module = await import('../../miniprogram/services/emas-api')
+    const initializeEmasClient = (
+      module as unknown as {
+        initializeEmasClient?: (client: unknown) => Promise<void>
+      }
+    ).initializeEmasClient
+    expect(initializeEmasClient).toBeTypeOf('function')
+
+    const init = vi.fn(async () => ({ success: true }))
+    const authorize = vi.fn(async () => ({ success: true }))
+    const getInfo = vi
+      .fn()
+      .mockResolvedValueOnce({ success: true, result: {} })
+      .mockResolvedValueOnce({
+        success: true,
+        result: { user: { userId: 'emas-user-1' } },
+      })
+
+    await initializeEmasClient?.({
+      init,
+      user: { authorize, getInfo },
+    })
+
+    expect(init).toHaveBeenCalledOnce()
+    expect(authorize).toHaveBeenCalledWith({ authProvider: 'wechat_openapi' })
+    expect(getInfo).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports a clear error when EMAS still cannot establish the WeChat identity', async () => {
+    const { initializeEmasClient } = await import('../../miniprogram/services/emas-api')
+
+    await expect(
+      initializeEmasClient({
+        init: vi.fn(async () => ({ success: true })),
+        user: {
+          authorize: vi.fn(async () => ({ success: true })),
+          getInfo: vi.fn(async () => ({ success: true, result: {} })),
+        },
+        function: {
+          invoke: vi.fn(),
+        },
+        file: {
+          uploadFile: vi.fn(),
+        },
+      }),
+    ).rejects.toThrow('微信身份授权失败')
+  })
+
   it('uploads member avatars to EMAS storage', async () => {
     const { uploadFile } = installEmas(async () => ok(bootstrap()))
 

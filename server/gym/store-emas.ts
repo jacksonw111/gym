@@ -224,7 +224,6 @@ export class EmasStore implements Store {
   async transaction<T>(work: () => Promise<T> | T): Promise<T> {
     const transaction = await this.database.startTransaction()
     try {
-      await this.loadFrom(transaction)
       const before = new Map(
         this.definitions().map((definition) => [
           definition.name,
