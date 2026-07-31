@@ -29,44 +29,34 @@
       bindinput="changeNickname"
      />
     <text class="field-label">03 · 联系手机号</text>
-    <input
-      class="nickname-input phone-input"
-      type="number"
-      maxlength="11"
-      value="{{manualPhone}}"
-      placeholder="手动填写手机号"
-      bindinput="changeManualPhone"
-     />
-    <button
-      class="primary-button phone-button"
-      disabled="{{!ready || !manualPhoneValid || submitting}}"
-      loading="{{submitting}}"
-      bindtap="manualLogin"
-    >{{submitting ? '正在建立档案' : '使用填写手机号登录'}}</button>
-    <view class="phone-divider">
-      <text>或者</text>
-    </view>
-    <button
-      class="secondary-button phone-button"
-      open-type="getPhoneNumber"
-      disabled="{{!ready || submitting}}"
-      loading="{{submitting}}"
-      bindgetphonenumber="authorizePhone"
-    >微信授权手机号并登录</button>
-    <text wx:if="{{!ready}}" class="login-hint">请先选择头像并填写昵称，真实登录按钮才会启用。</text>
-    <text class="privacy-note">手动填写的号码仅作为联系信息保存，不代表已经过微信验证。</text>
-    <view wx:if="{{testLoginEnabled}}" class="test-login">
-      <view class="test-login__divider">
-        <text>开发工具测试</text>
-      </view>
+    <block wx:if="{{manualPhoneMode}}">
+      <input
+        class="nickname-input phone-input"
+        type="number"
+        maxlength="11"
+        value="{{manualPhone}}"
+        placeholder="手动填写手机号"
+        bindinput="changeManualPhone"
+       />
       <button
-        class="secondary-button test-login__button"
-        disabled="{{submitting}}"
+        class="primary-button phone-button"
+        disabled="{{!ready || !manualPhoneValid || submitting}}"
         loading="{{submitting}}"
-        bindtap="testLogin"
-      >模拟器测试登录</button>
-      <text class="privacy-note">仅开发版和体验版显示，不需要手机号授权，不会出现在正式版。</text>
-    </view>
+        bindtap="manualLogin"
+      >{{submitting ? '正在建立档案' : '使用填写手机号登录'}}</button>
+      <text class="privacy-note">手动填写的号码仅作为联系信息保存，不代表已经过微信验证。</text>
+    </block>
+    <block wx:else>
+      <button
+        class="primary-button phone-button"
+        open-type="getPhoneNumber"
+        disabled="{{!ready || submitting}}"
+        loading="{{submitting}}"
+        bindgetphonenumber="authorizePhone"
+      >{{submitting ? '正在建立档案' : '微信授权手机号并登录'}}</button>
+      <text class="privacy-note">点击按钮后，微信会显示手机号授权确认。</text>
+    </block>
+    <text wx:if="{{!ready}}" class="login-hint">请先选择头像并填写昵称，真实登录按钮才会启用。</text>
     <text wx:if="{{error}}" class="login-error">{{error}}</text>
   </view>
 </view>

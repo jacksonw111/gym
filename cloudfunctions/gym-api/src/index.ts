@@ -399,39 +399,6 @@ export const createRouter = (
           })
           return { ok: true, data: user }
         }
-        case 'registerTestMember': {
-          if (environment.production || !environment.developmentPaymentsEnabled) {
-            throw new ApiError('UNAUTHORIZED', '当前环境不允许模拟器测试登录')
-          }
-          const openId = request.identity?.openId
-          if (!openId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
-          const requestedName = typeof payload.name === 'string' ? payload.name.trim() : ''
-          const name = requestedName || '模拟器测试会员'
-          if (name.length > 32) {
-            throw new ApiError('INVALID_REQUEST', '昵称长度应为 1—32 个字符')
-          }
-          const user = await store.transaction(() => {
-            const existing = store.users.find((item) => item.openId === openId)
-            if (existing) {
-              existing.name = name
-              existing.phone = '13800000000'
-              existing.phoneVerified = false
-              if (!existing.roles.includes('member')) existing.roles.push('member')
-              return existing
-            }
-            const created: User = {
-              id: store.nextId('user'),
-              openId,
-              name,
-              phone: '13800000000',
-              phoneVerified: false,
-              roles: ['member'],
-            }
-            store.users.push(created)
-            return created
-          })
-          return { ok: true, data: user }
-        }
         case 'getSchedule': {
           const coachId = requiredString(payload, 'coachId')
           const coach = store.coaches.find(

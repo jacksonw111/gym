@@ -8,6 +8,7 @@ import {
   isValidMainlandPhone,
   loginPageUrl,
   registrationReady,
+  shouldUseManualPhone,
 } from '../../miniprogram/models/auth'
 import {
   applyBulkAvailability,
@@ -174,6 +175,12 @@ describe('member login flow', () => {
     expect(isValidMainlandPhone('13800000000')).toBe(true)
     expect(isValidMainlandPhone('1380000000')).toBe(false)
     expect(isValidMainlandPhone('12345678901')).toBe(false)
+  })
+
+  it('shows manual phone entry immediately only in the developer simulator', () => {
+    expect(shouldUseManualPhone('devtools')).toBe(true)
+    expect(shouldUseManualPhone('ios')).toBe(false)
+    expect(shouldUseManualPhone('android')).toBe(false)
   })
 })
 

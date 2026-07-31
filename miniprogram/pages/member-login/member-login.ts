@@ -1,5 +1,9 @@
-import { getEnvironment } from '../../config/env'
-import { isValidMainlandPhone, type LoginReturn, registrationReady } from '../../models/auth'
+import {
+  isValidMainlandPhone,
+  type LoginReturn,
+  registrationReady,
+  shouldUseManualPhone,
+} from '../../models/auth'
 import { createRequestId, getApi } from '../../services/api'
 
 interface ChooseAvatarEvent extends WechatMiniprogram.BaseEvent {
@@ -26,15 +30,15 @@ Page({
     ready: false,
     manualPhone: '',
     manualPhoneValid: false,
+    manualPhoneMode: false,
     submitting: false,
     error: '',
-    testLoginEnabled: false,
   },
 
   onLoad(query: Record<string, string | undefined>) {
     this.setData({
       returnTo: query.returnTo === 'checkout' ? 'checkout' : 'profile',
-      testLoginEnabled: getEnvironment().testPaymentEnabled,
+      manualPhoneMode: shouldUseManualPhone(wx.getDeviceInfo().platform),
     })
   },
 
@@ -71,7 +75,10 @@ Page({
     }
     const phoneCloudId = event.detail.cloudID
     if (!phoneCloudId) {
-      this.setData({ error: '未获得微信手机号授权，你可以手动填写手机号登录。' })
+      this.setData({
+        manualPhoneMode: true,
+        error: '未获得微信手机号授权，请手动填写手机号登录。',
+      })
       return
     }
     await this.submitRegistration({ phoneCloudId })
@@ -103,26 +110,6 @@ Page({
     } catch (error) {
       this.setData({
         error: error instanceof Error ? error.message : '登录失败，请重试',
-        submitting: false,
-      })
-    }
-  },
-
-  async testLogin() {
-    if (this.data.submitting || !this.data.testLoginEnabled) {
-      return
-    }
-    this.setData({ submitting: true, error: '' })
-    try {
-      await getApi().registerTestMember({
-        name: this.data.nickname.trim() || '模拟器测试会员',
-        requestId: createRequestId('register-test'),
-      })
-      wx.showToast({ title: '测试登录成功', icon: 'success' })
-      setTimeout(() => wx.navigateBack(), 500)
-    } catch (error) {
-      this.setData({
-        error: error instanceof Error ? error.message : '测试登录失败',
         submitting: false,
       })
     }

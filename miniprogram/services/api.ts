@@ -123,15 +123,9 @@ export interface RegisterMemberInput {
   requestId: string
 }
 
-export interface RegisterTestMemberInput {
-  name?: string
-  requestId: string
-}
-
 export interface GymApi {
   getSession(): Promise<SessionView>
   registerMember(input: RegisterMemberInput): Promise<SessionView>
-  registerTestMember(input: RegisterTestMemberInput): Promise<SessionView>
   switchRole(role: UserRole): Promise<SessionView>
   getMemberHome(): Promise<MemberHomeView>
   purchasePackage(input: PurchasePackageInput): Promise<PurchaseResult>

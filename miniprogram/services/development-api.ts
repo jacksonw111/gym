@@ -17,7 +17,6 @@ import type {
   PurchaseResult,
   QueryPurchaseInput,
   RegisterMemberInput,
-  RegisterTestMemberInput,
   SaveFeedbackInput,
   SessionView,
   SetDayAvailabilityInput,
@@ -62,15 +61,6 @@ export class DevelopmentApi implements GymApi {
       draft.user.avatarUrl = input.avatarUrl
       draft.user.phone = input.phone ?? draft.user.phone ?? '13800000000'
       draft.user.phoneVerified = Boolean(input.phoneCloudId)
-    })
-    return { authenticated: true, user: next.user, role: next.role }
-  }
-
-  async registerTestMember(input: RegisterTestMemberInput): Promise<SessionView> {
-    const next = this.store.update((draft) => {
-      draft.user.name = input.name?.trim() || '模拟器测试会员'
-      draft.user.phone = '13800000000'
-      draft.user.phoneVerified = false
     })
     return { authenticated: true, user: next.user, role: next.role }
   }

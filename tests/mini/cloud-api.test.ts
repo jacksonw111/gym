@@ -176,26 +176,6 @@ describe('production CloudApi adapter', () => {
     })
   })
 
-  it('uses the dedicated development-only action for simulator login', async () => {
-    const { cloudCall } = installWechat(async ({ data }) => {
-      if (data.action === 'registerTestMember') return ok(user)
-      return ok(bootstrap())
-    })
-
-    await new CloudApi(true).registerTestMember({
-      name: '模拟器会员',
-      requestId: 'register-test-1',
-    })
-
-    expect(cloudCall).toHaveBeenCalledWith({
-      name: 'gym-api',
-      data: expect.objectContaining({
-        action: 'registerTestMember',
-        payload: { name: '模拟器会员' },
-      }),
-    })
-  })
-
   it('preserves the real WeChat cloud error message when the request never reaches the function', async () => {
     installWechat(async () => {
       throw {
