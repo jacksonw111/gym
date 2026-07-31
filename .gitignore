@@ -6,3 +6,4 @@ project.private.config.json
 .env.local
 .env.*.local
 cloudfunctions/*/dist/
+artifacts/
