@@ -15,7 +15,7 @@ interface NicknameInputEvent extends WechatMiniprogram.BaseEvent {
 }
 
 interface ManualLoginEvent extends WechatMiniprogram.BaseEvent {
-  detail: { value: { phone?: string | number } }
+  detail: { value: { nickname?: string; phone?: string | number } }
 }
 
 interface PhoneNumberEvent extends WechatMiniprogram.BaseEvent {
@@ -72,23 +72,28 @@ Page({
       })
       return
     }
-    await this.submitRegistration({ phoneCloudId })
+    await this.submitRegistration({ phoneCloudId }, this.data.nickname)
   },
 
   async manualLogin(event: ManualLoginEvent) {
     if (this.data.submitting) {
       return
     }
+    const nickname = String(event.detail.value.nickname ?? '').trim()
     const phone = normalizePhoneInput(event.detail.value.phone ?? '')
-    const inputError = registrationInputError(this.data.avatarPath, this.data.nickname, phone)
+    const inputError = registrationInputError(this.data.avatarPath, nickname, phone)
     if (inputError) {
       this.setData({ error: inputError })
       return
     }
-    await this.submitRegistration({ phone })
+    this.setData({ nickname })
+    await this.submitRegistration({ phone }, nickname)
   },
 
-  async submitRegistration(phoneInput: { phoneCloudId?: string; phone?: string }) {
+  async submitRegistration(
+    phoneInput: { phoneCloudId?: string; phone?: string },
+    nickname: string,
+  ) {
     this.setData({ submitting: true, error: '' })
     try {
       const extension = this.data.avatarPath.match(/\.[a-zA-Z0-9]+$/)?.[0] ?? '.jpg'
@@ -97,7 +102,7 @@ Page({
         filePath: this.data.avatarPath,
       })
       await getApi().registerMember({
-        name: this.data.nickname.trim(),
+        name: nickname.trim(),
         avatarUrl: uploaded.fileID,
         ...phoneInput,
         requestId: createRequestId('register'),

@@ -20,17 +20,19 @@
        />
       <view wx:else class="avatar-placeholder">选择头像</view>
     </button>
-    <text class="field-label">02 · 微信昵称</text>
-    <input
-      class="nickname-input"
-      type="nickname"
-      value="{{nickname}}"
-      placeholder="填写你的昵称"
-      bindinput="changeNickname"
-     />
-    <text class="field-label">03 · 联系手机号</text>
-    <block wx:if="{{manualPhoneMode}}">
-      <form bindsubmit="manualLogin">
+    <form bindsubmit="manualLogin">
+      <text class="field-label">02 · 微信昵称</text>
+      <input
+        class="nickname-input"
+        name="nickname"
+        type="nickname"
+        placeholder="填写你的昵称"
+        bindinput="changeNickname"
+        bindchange="changeNickname"
+        bindblur="changeNickname"
+       />
+      <text class="field-label">03 · 联系手机号</text>
+      <block wx:if="{{manualPhoneMode}}">
         <input
           class="nickname-input phone-input"
           name="phone"
@@ -44,19 +46,19 @@
           disabled="{{submitting}}"
           loading="{{submitting}}"
         >{{submitting ? '正在建立档案' : '使用填写手机号登录'}}</button>
-      </form>
-      <text class="privacy-note">手动填写的号码仅作为联系信息保存，不代表已经过微信验证。</text>
-    </block>
-    <block wx:else>
-      <button
-        class="primary-button phone-button"
-        open-type="getPhoneNumber"
-        disabled="{{submitting}}"
-        loading="{{submitting}}"
-        bindgetphonenumber="authorizePhone"
-      >{{submitting ? '正在建立档案' : '微信授权手机号并登录'}}</button>
-      <text class="privacy-note">点击按钮后，微信会显示手机号授权确认。</text>
-    </block>
+        <text class="privacy-note">手动填写的号码仅作为联系信息保存，不代表已经过微信验证。</text>
+      </block>
+      <block wx:else>
+        <button
+          class="primary-button phone-button"
+          open-type="getPhoneNumber"
+          disabled="{{submitting}}"
+          loading="{{submitting}}"
+          bindgetphonenumber="authorizePhone"
+        >{{submitting ? '正在建立档案' : '微信授权手机号并登录'}}</button>
+        <text class="privacy-note">点击按钮后，微信会显示手机号授权确认。</text>
+      </block>
+    </form>
     <text wx:if="{{error}}" class="login-error">{{error}}</text>
   </view>
 </view>
