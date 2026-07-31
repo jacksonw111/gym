@@ -92,7 +92,7 @@ operations
 npm run emas:deploy -- gym-admin-api
 ```
 
-脚本会自动构建、上传、部署、配置 HTTP 触发器和跨域来源，并把后台接口地址保存到 `admin/.env.local` 后重新构建网页。以后更新这个函数仍运行同一条命令，不需要重复手动上传或填写地址。
+脚本会自动构建、上传、部署、配置 HTTP 触发器和跨域来源，并把后台接口地址保存到 `admin/.env.local`。部署 `gym-admin-api` 时还会重新构建网页并发布到 EMAS 静态网站托管，终端最后会显示可直接打开的后台网址。以后更新后台仍运行同一条命令，不需要重复手动上传或填写地址。
 
 只需要生成本地部署包、或准备在控制台手动上传时，运行：
 
@@ -129,7 +129,7 @@ admin/dist/
 }
 ```
 
-确认管理员和课包已写入后，删除或停用 `seed` 函数。后台函数部署完成后，将自动生成的 `admin/dist/` 上传到前端托管的 `/admin/` 目录。
+确认管理员和课包已写入后，删除或停用 `seed` 函数。自动部署会把 `admin/dist/` 发布为静态网站的首页。
 
 `emas/secrets.local.json` 中的 `adminAllowedOrigin` 必须与浏览器实际打开后台时的来源完全一致，例如 `https://example.com`，不要带 `/admin/` 路径。
 

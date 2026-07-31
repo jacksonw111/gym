@@ -1,7 +1,12 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs'
 import { createRequire } from 'node:module'
-import { resolve } from 'node:path'
+import { basename, extname, join, relative, resolve } from 'node:path'
 
 const require = createRequire(import.meta.url)
 const SDK = require('@alicloud/mpserverless20190615')
@@ -75,6 +80,103 @@ const saveAdminApiUrl = (adminApiUrl) => {
     ? current.replace(/^VITE_EMAS_ADMIN_API_URL=.*$/m, entry)
     : `${current.trimEnd()}${current.trim() ? '\n' : ''}${entry}\n`
   writeFileSync(envPath, next)
+}
+
+const adminContentTypes = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+}
+
+const listFiles = (root, current = root) =>
+  readdirSync(current, { withFileTypes: true }).flatMap((entry) => {
+    const absolutePath = join(current, entry.name)
+    if (entry.isDirectory()) return listFiles(root, absolutePath)
+    return [
+      {
+        absolutePath,
+        relativePath: relative(root, absolutePath).replaceAll('\\', '/'),
+      },
+    ]
+  })
+
+const uploadAdminFile = async (file) => {
+  const webPath = file.relativePath
+  const credential = await client.getWebHostingUploadCredential(
+    request('GetWebHostingUploadCredentialRequest', {
+      spaceId: miniConfig.spaceId,
+      filePath: `/${webPath}`,
+    }),
+  )
+  const data = credential.body?.data
+  if (
+    !data?.accessKeyId ||
+    !data.endpoint ||
+    !data.filePath ||
+    !data.policy ||
+    !data.securityToken ||
+    !data.signature
+  ) {
+    throw new Error(`无法取得后台文件上传凭证：${webPath}`)
+  }
+
+  const form = new FormData()
+  form.append('policy', data.policy)
+  form.append('OSSAccessKeyId', data.accessKeyId)
+  form.append('success_action_status', '200')
+  form.append('signature', data.signature)
+  form.append('x-oss-security-token', data.securityToken)
+  form.append('key', data.filePath)
+  form.append(
+    'file',
+    new Blob([readFileSync(file.absolutePath)], {
+      type: adminContentTypes[extname(file.absolutePath)] ?? 'application/octet-stream',
+    }),
+    basename(file.absolutePath),
+  )
+
+  const endpoint = data.endpoint.startsWith('http')
+    ? data.endpoint
+    : `https://${data.endpoint}`
+  const upload = await fetch(endpoint, { method: 'POST', body: form })
+  if (!upload.ok) {
+    const response = await upload.text()
+    const code = response.match(/<Code>([^<]+)<\/Code>/)?.[1] ?? 'Unknown'
+    const message = response.match(/<Message>([^<]+)<\/Message>/)?.[1] ?? '未知原因'
+    throw new Error(`后台文件上传失败：${webPath}，HTTP ${upload.status} ${code}: ${message}`)
+  }
+}
+
+const deployAdminSite = async () => {
+  const status = await client.getWebHostingStatus(
+    request('GetWebHostingStatusRequest', { spaceId: miniConfig.spaceId }),
+  )
+  if (status.body?.data?.status !== 'IN_SERVICE') {
+    await client.openWebHostingService(
+      request('OpenWebHostingServiceRequest', { spaceId: miniConfig.spaceId }),
+    )
+    throw new Error('静态网站托管正在开通，请等待 3 到 5 分钟后重新运行部署命令')
+  }
+
+  const files = listFiles(resolve(workspace, 'admin/dist'))
+  for (const file of files) await uploadAdminFile(file)
+  await client.modifyWebHostingConfig(
+    request('ModifyWebHostingConfigRequest', {
+      spaceId: miniConfig.spaceId,
+      indexPath: 'index.html',
+      errorPath: 'index.html',
+      errorHttpStatus: '200',
+    }),
+  )
+
+  const config = await client.getWebHostingConfig(
+    request('GetWebHostingConfigRequest', { spaceId: miniConfig.spaceId }),
+  )
+  const domain = config.body?.data?.defaultDomain
+  if (!domain) throw new Error('后台网页已上传，但未取得静态网站访问地址')
+  return domain.startsWith('http') ? domain : `https://${domain}`
 }
 
 const functionExists = async (name) => {
@@ -224,6 +326,8 @@ if (endpoint) {
         stdio: 'inherit',
       })
       console.log('Saved the admin API URL and rebuilt the admin site')
+      const adminSiteUrl = await deployAdminSite()
+      console.log(`Admin site URL: ${adminSiteUrl}`)
     }
   }
 }

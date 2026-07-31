@@ -65,6 +65,8 @@ describe('EMAS deployment configuration', () => {
     expect(packageJson.scripts['emas:deploy']).toBe('node scripts/deploy-emas.mjs')
     expect(deployScript).toContain("'Content-Type': 'application/octet-stream'")
     expect(deployScript).toContain('VITE_EMAS_ADMIN_API_URL')
+    expect(deployScript).toContain('getWebHostingUploadCredential')
+    expect(deployScript).toContain("indexPath: 'index.html'")
   })
 
   it('keeps real EMAS and seed credentials outside tracked files', () => {
