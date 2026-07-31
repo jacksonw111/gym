@@ -143,19 +143,27 @@ const adminDashboard = (store: Store) => ({
   schedules: store.schedules,
 })
 
-const errorResponse = (error: unknown): ApiResponse => {
+export type ErrorLogger = (message: string) => void
+
+const describeError = (error: unknown): string =>
+  error instanceof Error
+    ? `${error.name}: ${error.message}\n${error.stack ?? ''}`
+    : JSON.stringify(error)
+
+const errorResponse = (
+  error: unknown,
+  logError: ErrorLogger = (message) => console.error(message),
+): ApiResponse => {
   if (error instanceof ApiError) {
     return { ok: false, error: { code: error.code, message: error.message } }
   }
   if (error instanceof DomainError) {
     return { ok: false, error: { code: 'DOMAIN_ERROR', message: error.message } }
   }
-  console.error('gym-api internal error', error)
-  const detail =
-    error instanceof Error ? `${error.name}: ${error.message}` : JSON.stringify(error)
+  logError(`gym-api internal error ${describeError(error)}`)
   return {
     ok: false,
-    error: { code: 'INTERNAL_ERROR', message: `操作失败，请稍后重试 [${detail}]` },
+    error: { code: 'INTERNAL_ERROR', message: '操作失败，请稍后重试' },
   }
 }
 
@@ -253,6 +261,7 @@ export const createRouter = (
   store: Store,
   environment: GymEnvironment,
   nowProvider: () => string = () => new Date().toISOString(),
+  logError?: ErrorLogger,
 ) => {
   return async (request: ApiRequest): Promise<ApiResponse> => {
     try {
@@ -699,7 +708,7 @@ export const createRouter = (
           throw new ApiError('UNKNOWN_ACTION', `不支持的操作：${request.action}`)
       }
     } catch (error) {
-      return errorResponse(error)
+      return errorResponse(error, logError)
     }
   }
 }
@@ -715,8 +724,9 @@ export const createGymHandler = (
   store: LoadableStore,
   environment: GymEnvironment,
   getServerIdentity: IdentityProvider,
+  logError?: ErrorLogger,
 ) => {
-  const router = createRouter(store, environment)
+  const router = createRouter(store, environment, undefined, logError)
   return async (event: ApiRequest): Promise<ApiResponse> => {
     try {
       await store.load?.()
@@ -728,7 +738,7 @@ export const createGymHandler = (
           : undefined,
       })
     } catch (error) {
-      return errorResponse(error)
+      return errorResponse(error, logError)
     }
   }
 }

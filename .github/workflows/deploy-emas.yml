@@ -55,6 +55,17 @@ jobs:
           ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
         run: npm run emas:deploy -- gym-api gym-admin-api auto-complete-lessons
 
+      - name: Probe deployed admin function
+        env:
+          EMAS_SERVER_SECRETS: ${{ secrets.EMAS_SERVER_SECRETS }}
+        run: |
+          ORIGIN=$(node -e "console.log(JSON.parse(process.env.EMAS_SERVER_SECRETS).adminAllowedOrigin)")
+          curl -sS -X POST "https://fc-mp-823fb75d-0fd0-4255-89fd-9d4a5303cc38.next.bspapp.com/http/gym-admin-api" \
+            -H "origin: $ORIGIN" -H "content-type: application/json" \
+            -d '{"action":"__ci_probe__","requestId":"ci-probe","payload":{}}' || true
+          echo
+          sleep 30
+
       - name: Show recent function logs
         if: always()
         env:

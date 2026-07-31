@@ -28,6 +28,7 @@ export const createGymApiEntrypoint =
       store,
       options.environmentFactory(context),
       () => options.identityProvider(context),
+      (message) => (context.logger ?? console).error(message),
     )
     return handler(context.args as ApiRequest)
   }

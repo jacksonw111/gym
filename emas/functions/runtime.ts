@@ -35,6 +35,10 @@ export interface RuntimeHttpClient {
 
 export interface EmasRuntimeContext {
   args: unknown
+  // EMAS 平台只采集 ctx.logger 的输出，console.* 不会出现在函数日志里
+  logger?: {
+    error(message: string): void
+  }
   mpserverless: {
     db: EmasDatabase
     user: {

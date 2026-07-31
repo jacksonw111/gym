@@ -66,6 +66,7 @@ export const createGymAdminEntrypoint =
       options.storeFactory(context),
       options.environmentFactory(context),
       async () => undefined,
+      (message) => (context.logger ?? console).error(message),
     )
     return composedJsonResponse(200, await handler(request))
   }
