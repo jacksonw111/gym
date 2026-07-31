@@ -8,6 +8,7 @@ import {
   isValidMainlandPhone,
   loginPageUrl,
   normalizePhoneInput,
+  registrationInputError,
   registrationReady,
   shouldUseManualPhone,
 } from '../../miniprogram/models/auth'
@@ -181,6 +182,15 @@ describe('member login flow', () => {
   it('normalizes simulator number input before validating it', () => {
     expect(normalizePhoneInput(13800000000)).toBe('13800000000')
     expect(normalizePhoneInput('138 0000 0000')).toBe('13800000000')
+  })
+
+  it('returns the exact missing field instead of silently disabling login', () => {
+    expect(registrationInputError('', '陈澄', '13800000000')).toBe('请先选择头像')
+    expect(registrationInputError('/tmp/avatar.jpg', '', '13800000000')).toBe('请填写昵称')
+    expect(registrationInputError('/tmp/avatar.jpg', '陈澄', '138')).toBe(
+      '请填写正确的 11 位手机号',
+    )
+    expect(registrationInputError('/tmp/avatar.jpg', '陈澄', '13800000000')).toBe('')
   })
 
   it('shows manual phone entry immediately only in the developer simulator', () => {

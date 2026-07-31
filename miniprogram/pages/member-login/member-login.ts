@@ -1,8 +1,7 @@
 import {
-  isValidMainlandPhone,
   type LoginReturn,
   normalizePhoneInput,
-  registrationReady,
+  registrationInputError,
   shouldUseManualPhone,
 } from '../../models/auth'
 import { createRequestId, getApi } from '../../services/api'
@@ -15,8 +14,8 @@ interface NicknameInputEvent extends WechatMiniprogram.BaseEvent {
   detail: { value: string }
 }
 
-interface PhoneInputEvent extends WechatMiniprogram.BaseEvent {
-  detail: { value: string | number }
+interface ManualLoginEvent extends WechatMiniprogram.BaseEvent {
+  detail: { value: { phone?: string | number } }
 }
 
 interface PhoneNumberEvent extends WechatMiniprogram.BaseEvent {
@@ -28,8 +27,6 @@ Page({
     avatarPath: '',
     nickname: '',
     returnTo: 'profile' as LoginReturn,
-    manualPhone: '',
-    manualPhoneValid: false,
     manualPhoneMode: false,
     submitting: false,
     error: '',
@@ -58,17 +55,13 @@ Page({
     })
   },
 
-  changeManualPhone(event: PhoneInputEvent) {
-    const manualPhone = normalizePhoneInput(event.detail.value)
-    this.setData({
-      manualPhone,
-      manualPhoneValid: isValidMainlandPhone(manualPhone),
-      error: '',
-    })
-  },
-
   async authorizePhone(event: PhoneNumberEvent) {
-    if (this.data.submitting || !registrationReady(this.data.avatarPath, this.data.nickname)) {
+    if (this.data.submitting) {
+      return
+    }
+    const inputError = registrationInputError(this.data.avatarPath, this.data.nickname)
+    if (inputError) {
+      this.setData({ error: inputError })
       return
     }
     const phoneCloudId = event.detail.cloudID
@@ -82,15 +75,17 @@ Page({
     await this.submitRegistration({ phoneCloudId })
   },
 
-  async manualLogin() {
-    if (
-      this.data.submitting ||
-      !registrationReady(this.data.avatarPath, this.data.nickname) ||
-      !this.data.manualPhoneValid
-    ) {
+  async manualLogin(event: ManualLoginEvent) {
+    if (this.data.submitting) {
       return
     }
-    await this.submitRegistration({ phone: this.data.manualPhone })
+    const phone = normalizePhoneInput(event.detail.value.phone ?? '')
+    const inputError = registrationInputError(this.data.avatarPath, this.data.nickname, phone)
+    if (inputError) {
+      this.setData({ error: inputError })
+      return
+    }
+    await this.submitRegistration({ phone })
   },
 
   async submitRegistration(phoneInput: { phoneCloudId?: string; phone?: string }) {

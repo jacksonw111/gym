@@ -30,34 +30,33 @@
      />
     <text class="field-label">03 · 联系手机号</text>
     <block wx:if="{{manualPhoneMode}}">
-      <input
-        class="nickname-input phone-input"
-        type="number"
-        maxlength="11"
-        value="{{manualPhone}}"
-        placeholder="手动填写手机号"
-        bindinput="changeManualPhone"
-       />
-      <button
-        class="primary-button phone-button"
-        disabled="{{!avatarPath || !nickname || !manualPhoneValid || submitting}}"
-        loading="{{submitting}}"
-        bindtap="manualLogin"
-      >{{submitting ? '正在建立档案' : '使用填写手机号登录'}}</button>
+      <form bindsubmit="manualLogin">
+        <input
+          class="nickname-input phone-input"
+          name="phone"
+          type="number"
+          maxlength="11"
+          placeholder="手动填写手机号"
+         />
+        <button
+          class="primary-button phone-button"
+          form-type="submit"
+          disabled="{{submitting}}"
+          loading="{{submitting}}"
+        >{{submitting ? '正在建立档案' : '使用填写手机号登录'}}</button>
+      </form>
       <text class="privacy-note">手动填写的号码仅作为联系信息保存，不代表已经过微信验证。</text>
     </block>
     <block wx:else>
       <button
         class="primary-button phone-button"
         open-type="getPhoneNumber"
-        disabled="{{!avatarPath || !nickname || submitting}}"
+        disabled="{{submitting}}"
         loading="{{submitting}}"
         bindgetphonenumber="authorizePhone"
       >{{submitting ? '正在建立档案' : '微信授权手机号并登录'}}</button>
       <text class="privacy-note">点击按钮后，微信会显示手机号授权确认。</text>
     </block>
-    <text wx:if="{{!avatarPath || !nickname}}" class="login-hint">请先选择头像并填写昵称，登录按钮才会启用。</text>
-    <text wx:elif="{{manualPhoneMode && !manualPhoneValid}}" class="login-hint">请填写正确的 11 位手机号。</text>
     <text wx:if="{{error}}" class="login-error">{{error}}</text>
   </view>
 </view>
