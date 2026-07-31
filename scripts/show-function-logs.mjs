@@ -36,9 +36,11 @@ for (const name of functionNames) {
     }),
   )
   console.log(`===== ${name} =====`)
+  // 只输出 ERROR 级别日志；入参日志可能包含密码、手机号等敏感信息，禁止打印
   for (const entry of response.body?.dataList ?? []) {
-    console.log(`--- request ${entry.requestId} (${entry.status})`)
     for (const [index, content] of (entry.contents ?? []).entries()) {
+      const level = entry.levels?.[index] ?? ''
+      if (!/error/i.test(level) && !content.includes('internal error')) continue
       console.log(`[${entry.timestamps?.[index] ?? ''}] ${content}`)
     }
   }
