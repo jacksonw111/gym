@@ -7,6 +7,7 @@ import {
 } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { build } from 'esbuild'
+import { loadEnv } from 'vite'
 
 const workspace = resolve(import.meta.dirname, '..')
 const artifactsRoot = join(workspace, 'artifacts/emas')
@@ -22,6 +23,7 @@ const functions = [
 ]
 
 const fallbackConfigs = new Set()
+const adminEnv = loadEnv('production', join(workspace, 'admin'), '')
 
 const pickConfig = (localName, exampleName) => {
   const localPath = join(workspace, 'emas', localName)
@@ -74,6 +76,7 @@ execFileSync('npm', ['run', 'admin:build'], {
     ...process.env,
     VITE_EMAS_ADMIN_API_URL:
       process.env.VITE_EMAS_ADMIN_API_URL ??
+      adminEnv.VITE_EMAS_ADMIN_API_URL ??
       'https://replace-after-function-deploy.invalid/gym-admin-api',
   },
   stdio: 'inherit',

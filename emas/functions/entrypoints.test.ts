@@ -34,7 +34,7 @@ describe('EMAS function entrypoints', () => {
     })
   })
 
-  it('handles admin CORS preflight and rejects an unapproved origin', async () => {
+  it('handles admin preflight and rejects an unapproved origin', async () => {
     const entrypoint = createGymAdminEntrypoint({
       storeFactory: () => new MemoryStore(createDevelopmentSeed()),
       environmentFactory: () => productionEnvironment,
@@ -51,7 +51,7 @@ describe('EMAS function entrypoints', () => {
       mpserverlessComposedResponse: true,
       statusCode: 204,
       headers: {
-        'access-control-allow-origin': 'https://admin.example.com',
+        'content-type': 'application/json; charset=utf-8',
       },
     })
 

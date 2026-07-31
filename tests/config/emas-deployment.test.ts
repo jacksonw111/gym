@@ -49,6 +49,7 @@ describe('EMAS deployment configuration', () => {
     const packageJson = JSON.parse(readFileSync(join(workspace, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>
     }
+    const deployScript = readFileSync(join(workspace, 'scripts/deploy-emas.mjs'), 'utf8')
     for (const name of [
       'gym-api',
       'gym-admin-api',
@@ -61,6 +62,9 @@ describe('EMAS deployment configuration', () => {
       ).toContain(`"name": "${name}"`)
     }
     expect(packageJson.scripts['emas:build']).toBe('node scripts/build-emas.mjs')
+    expect(packageJson.scripts['emas:deploy']).toBe('node scripts/deploy-emas.mjs')
+    expect(deployScript).toContain("'Content-Type': 'application/octet-stream'")
+    expect(deployScript).toContain('VITE_EMAS_ADMIN_API_URL')
   })
 
   it('keeps real EMAS and seed credentials outside tracked files', () => {

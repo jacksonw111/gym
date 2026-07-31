@@ -12,6 +12,7 @@
     "admin:test": "vitest run admin/src",
     "admin:typecheck": "tsc --noEmit -p admin/tsconfig.json",
     "emas:build": "node scripts/build-emas.mjs",
+    "emas:deploy": "node scripts/deploy-emas.mjs",
     "verify:production-config": "node scripts/verify-production-config.mjs",
     "format": "biome format --write . && prettier --write \"miniprogram/**/*.{wxml,less}\"",
     "lint": "biome lint . && stylelint \"miniprogram/**/*.less\"",
@@ -29,6 +30,7 @@
     "regenerator-runtime": "^0.13.11"
   },
   "devDependencies": {
+    "@alicloud/mpserverless20190615": "^2.0.0",
     "@babel/generator": "7.28.3",
     "@babel/parser": "7.28.3",
     "@biomejs/biome": "2.5.6",

@@ -21,13 +21,6 @@ interface GymAdminEntrypointOptions {
   allowedOrigin: string
 }
 
-const corsHeaders = (allowedOrigin: string): Record<string, string> => ({
-  'access-control-allow-origin': allowedOrigin,
-  'access-control-allow-methods': 'POST, OPTIONS',
-  'access-control-allow-headers': 'content-type',
-  vary: 'Origin',
-})
-
 export const createGymAdminEntrypoint =
   (options: GymAdminEntrypointOptions) =>
   async (context: EmasRuntimeContext) => {
@@ -40,10 +33,9 @@ export const createGymAdminEntrypoint =
       })
     }
 
-    const headers = corsHeaders(options.allowedOrigin)
     if (event.httpMethod === 'OPTIONS') {
       return {
-        ...composedJsonResponse(204, {}, headers),
+        ...composedJsonResponse(204, {}),
         body: '',
       }
     }
@@ -54,7 +46,6 @@ export const createGymAdminEntrypoint =
           ok: false,
           error: { code: 'METHOD_NOT_ALLOWED', message: '只支持 POST 请求' },
         },
-        headers,
       )
     }
 
@@ -68,7 +59,6 @@ export const createGymAdminEntrypoint =
           ok: false,
           error: { code: 'INVALID_REQUEST', message: '请求内容格式不正确' },
         },
-        headers,
       )
     }
 
@@ -77,7 +67,7 @@ export const createGymAdminEntrypoint =
       options.environmentFactory(context),
       async () => undefined,
     )
-    return composedJsonResponse(200, await handler(request), headers)
+    return composedJsonResponse(200, await handler(request))
   }
 
 export const main = async (context: EmasRuntimeContext) => {

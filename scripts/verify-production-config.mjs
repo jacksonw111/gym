@@ -6,7 +6,19 @@ const require = createRequire(import.meta.url)
 const workspace = resolve(import.meta.dirname, '..')
 const miniConfigPath = resolve(workspace, 'miniprogram/config/emas.local.js')
 const secretsPath = resolve(workspace, 'emas/secrets.local.json')
+const adminEnvPath = resolve(workspace, 'admin/.env.local')
 const missing = []
+const adminEnv = existsSync(adminEnvPath)
+  ? Object.fromEntries(
+      readFileSync(adminEnvPath, 'utf8')
+        .split(/\r?\n/)
+        .filter((line) => line.includes('='))
+        .map((line) => {
+          const separator = line.indexOf('=')
+          return [line.slice(0, separator), line.slice(separator + 1)]
+        }),
+    )
+  : {}
 
 if (!existsSync(miniConfigPath)) {
   missing.push('miniprogram/config/emas.local.js')
@@ -14,7 +26,7 @@ if (!existsSync(miniConfigPath)) {
 if (!existsSync(secretsPath)) {
   missing.push('emas/secrets.local.json')
 }
-if (!process.env.VITE_EMAS_ADMIN_API_URL?.trim()) {
+if (!(process.env.VITE_EMAS_ADMIN_API_URL ?? adminEnv.VITE_EMAS_ADMIN_API_URL)?.trim()) {
   missing.push('VITE_EMAS_ADMIN_API_URL')
 }
 

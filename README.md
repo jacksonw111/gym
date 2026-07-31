@@ -45,7 +45,7 @@ cp .env.example .env.local
 - `miniprogram/config/emas.local.js`：小程序 AppID、Space ID、Client Secret 和 API Endpoint。
 - `emas/secrets.local.json`：微信 AppID、微信 AppSecret、网页后台正式来源地址，以及正式支付服务地址和口令。测试空间可将 `production` 设为 `false`、`developmentPaymentsEnabled` 设为 `true`。
 - `emas/seed.local.json`：一次性初始化口令、管理员密码摘要、初始课包和可选的教练资料。
-- `.env.local`：`VITE_EMAS_ADMIN_API_URL` 填 `gym-admin-api` 的 HTTP 触发地址。
+- `admin/.env.local`：由自动部署脚本保存 `gym-admin-api` 的 HTTP 地址，一般不需要手动创建。
 
 这些文件均被 Git 忽略，不会提交真实凭据。生成管理员密码摘要：
 
@@ -86,13 +86,19 @@ operations
 
 ## 构建和部署
 
-先填写 `emas/secrets.local.json` 和 `emas/seed.local.json`，再运行：
+配置好阿里云 AccessKey 后，直接部署指定函数：
 
 ```bash
-VITE_EMAS_ADMIN_API_URL="gym-admin-api 的 HTTP 地址" npm run emas:build
+npm run emas:deploy -- gym-admin-api
 ```
 
-如果还没有 HTTP 地址，可以先不传这个变量构建并部署函数；脚本会用不可访问的占位地址构建网页。创建 HTTP 触发器并取得真实地址后，必须带真实地址重新构建网页。
+脚本会自动构建、上传、部署、配置 HTTP 触发器和跨域来源，并把后台接口地址保存到 `admin/.env.local` 后重新构建网页。以后更新这个函数仍运行同一条命令，不需要重复手动上传或填写地址。
+
+只需要生成本地部署包、或准备在控制台手动上传时，运行：
+
+```bash
+npm run emas:build
+```
 
 构建结果：
 
@@ -105,13 +111,15 @@ artifacts/emas/functions/seed.zip
 admin/dist/
 ```
 
-在 EMAS 控制台按同名函数上传对应 ZIP：
+手动部署时，在 EMAS 控制台按同名函数上传对应 ZIP：
 
 1. `gym-api`：供小程序调用。
 2. `gym-admin-api`：创建 HTTP 触发器，只允许 `POST` 和 `OPTIONS`。
 3. `auto-complete-lessons`：创建每小时执行一次的定时触发器。
 4. `wechat-payment-notify`：正式支付时创建 HTTP 触发器；未配置支付验签服务时不要开放购买。
 5. `seed`：仅用于首次初始化。
+
+后台接口的 HTTP 路径固定为 `/http/gym-admin-api`，后续重复部署不会改变地址。
 
 部署 `seed` 后，在控制台测试中传入：
 
@@ -121,7 +129,7 @@ admin/dist/
 }
 ```
 
-确认管理员和课包已写入后，删除或停用 `seed` 函数。然后取得 `gym-admin-api` 的 HTTP 地址，重新构建网页，将 `admin/dist/` 上传到前端托管的 `/admin/` 目录。
+确认管理员和课包已写入后，删除或停用 `seed` 函数。后台函数部署完成后，将自动生成的 `admin/dist/` 上传到前端托管的 `/admin/` 目录。
 
 `emas/secrets.local.json` 中的 `adminAllowedOrigin` 必须与浏览器实际打开后台时的来源完全一致，例如 `https://example.com`，不要带 `/admin/` 路径。
 
