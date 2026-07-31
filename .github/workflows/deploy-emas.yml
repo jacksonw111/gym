@@ -29,12 +29,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check code
-        run: npm run check
-
-      - name: Run tests
-        run: npm test
-
       - name: Prepare EMAS configuration
         env:
           EMAS_MINIPROGRAM_CONFIG: ${{ secrets.EMAS_MINIPROGRAM_CONFIG }}
@@ -42,6 +36,12 @@ jobs:
           WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
         run: |
           node -e "const fs=require('node:fs'); const mini=JSON.parse(process.env.EMAS_MINIPROGRAM_CONFIG); const server=JSON.parse(process.env.EMAS_SERVER_SECRETS); server.wechatAppSecret=process.env.WECHAT_APP_SECRET; fs.writeFileSync('miniprogram/config/emas.local.js', 'module.exports = ' + JSON.stringify(mini, null, 2) + '\n'); fs.writeFileSync('emas/secrets.local.json', JSON.stringify(server, null, 2) + '\n')"
+
+      - name: Check code
+        run: npm run check
+
+      - name: Run tests
+        run: npm test
 
       - name: Deploy core EMAS services
         env:

@@ -97,5 +97,8 @@ describe('EMAS deployment configuration', () => {
       'npm run emas:deploy -- gym-api gym-admin-api auto-complete-lessons wechat-payment-notify',
     )
     expect(workflow).not.toContain('npm run emas:deploy -- seed')
+    expect(workflow.indexOf('Prepare EMAS configuration')).toBeLessThan(
+      workflow.indexOf('Run tests'),
+    )
   })
 })
