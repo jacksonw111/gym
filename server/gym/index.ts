@@ -151,9 +151,11 @@ const errorResponse = (error: unknown): ApiResponse => {
     return { ok: false, error: { code: 'DOMAIN_ERROR', message: error.message } }
   }
   console.error('gym-api internal error', error)
+  const detail =
+    error instanceof Error ? `${error.name}: ${error.message}` : JSON.stringify(error)
   return {
     ok: false,
-    error: { code: 'INTERNAL_ERROR', message: '操作失败，请稍后重试' },
+    error: { code: 'INTERNAL_ERROR', message: `操作失败，请稍后重试 [${detail}]` },
   }
 }
 
