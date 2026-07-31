@@ -4,7 +4,7 @@ import { type Coach, MemoryStore, type User } from './store'
 
 const member: User = {
   id: 'member-1',
-  openId: 'openid-member',
+  emasUserId: 'openid-member',
   name: '会员',
   roles: ['member'],
 }

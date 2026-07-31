@@ -19,7 +19,7 @@ interface EmasCall {
 
 const user = {
   id: 'user-1',
-  openId: 'openid-1',
+  emasUserId: 'openid-1',
   name: '教练账号',
   phone: '13900000000',
   roles: ['member', 'coach'] as UserRole[],

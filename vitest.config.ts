@@ -3,6 +3,11 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts', 'cloudfunctions/**/*.test.ts', 'admin/src/**/*.test.{ts,tsx}'],
+    include: [
+      'tests/**/*.test.ts',
+      'server/**/*.test.ts',
+      'cloudfunctions/**/*.test.ts',
+      'admin/src/**/*.test.{ts,tsx}',
+    ],
   },
 })

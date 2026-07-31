@@ -308,7 +308,7 @@ describe('member page models', () => {
   it('only switches roles for a dual-role account', () => {
     const dual: User = {
       id: 'user-1',
-      openId: 'openid',
+      emasUserId: 'openid',
       name: '林晓',
       roles: ['member', 'coach'],
     }

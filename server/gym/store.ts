@@ -2,7 +2,7 @@ export type UserRole = 'member' | 'coach'
 
 export interface User {
   id: string
-  openId: string
+  emasUserId: string
   name: string
   avatarUrl?: string
   phone?: string
@@ -113,12 +113,7 @@ export interface Appeal {
 }
 
 export type LedgerOperation =
-  | 'purchase'
-  | 'lock'
-  | 'release'
-  | 'consume'
-  | 'appeal_refund'
-  | 'manual_adjust'
+  'purchase' | 'lock' | 'release' | 'consume' | 'appeal_refund' | 'manual_adjust'
 
 export interface LedgerEntry {
   id: string

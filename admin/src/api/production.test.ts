@@ -27,7 +27,7 @@ const dashboard = {
   members: [
     {
       id: 'member-1',
-      openId: 'member-openid',
+      emasUserId: 'member-openid',
       name: '陈澄',
       roles: ['member'],
     },

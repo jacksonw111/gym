@@ -153,7 +153,7 @@ describe('CloudBaseStore', () => {
         .doc('member-1')
         .set({
           id: 'member-1',
-          openId: 'openid-1',
+          emasUserId: 'openid-1',
           name: '会员',
           roles: ['member'],
         })
@@ -220,7 +220,7 @@ describe('CloudBaseStore', () => {
     for (let index = 0; index < 205; index += 1) {
       await users.doc(`member-${index}`).set({
         id: `member-${index}`,
-        openId: `openid-${index}`,
+        emasUserId: `openid-${index}`,
         name: `会员${index}`,
         roles: ['member'],
       })
@@ -230,7 +230,7 @@ describe('CloudBaseStore', () => {
     await store.load()
 
     expect(store.users).toHaveLength(205)
-    expect(store.users.at(-1)?.openId).toBe('openid-204')
+    expect(store.users.at(-1)?.emasUserId).toBe('openid-204')
   })
 
   it('CloudBase事务失败时不提交任何字段变更', async () => {
@@ -240,7 +240,7 @@ describe('CloudBaseStore', () => {
       .doc('member-1')
       .set({
         id: 'member-1',
-        openId: 'openid-1',
+        emasUserId: 'openid-1',
         name: '原姓名',
         roles: ['member'],
       })
@@ -327,7 +327,7 @@ describe('CloudBaseStore', () => {
       users: [
         {
           id: 'member-1',
-          openId: 'openid-1',
+          emasUserId: 'openid-1',
           name: '原姓名',
           roles: ['member'],
         },

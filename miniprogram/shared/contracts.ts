@@ -2,7 +2,7 @@ export type UserRole = 'member' | 'coach'
 
 export interface User {
   id: string
-  openId: string
+  emasUserId: string
   name: string
   avatarUrl?: string
   phone?: string

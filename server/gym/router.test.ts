@@ -49,7 +49,7 @@ describe('CloudBase action router', () => {
       action: 'bootstrap',
       requestId: 'bootstrap-1',
       payload: {},
-      identity: { openId: 'dev-member-openid' },
+      identity: { emasUserId: 'dev-member-openid' },
     })
 
     expect(response).toMatchObject({
@@ -86,7 +86,7 @@ describe('CloudBase action router', () => {
       action: 'bootstrap',
       requestId: 'bootstrap-guest',
       payload: {},
-      identity: { openId: 'guest-openid' },
+      identity: { emasUserId: 'guest-openid' },
     })
 
     expect(response).toMatchObject({
@@ -106,7 +106,7 @@ describe('CloudBase action router', () => {
         coach: { schedule: [], lessons: [] },
       },
     })
-    expect(store.users.some((item) => item.openId === 'guest-openid')).toBe(false)
+    expect(store.users.some((item) => item.emasUserId === 'guest-openid')).toBe(false)
   })
 
   it('registerMember 只创建一个真实会员并允许重复授权更新', async () => {
@@ -125,7 +125,7 @@ describe('CloudBase action router', () => {
         avatarUrl: 'cloud://test-env/avatar/member.jpg',
         phoneCloudId: 'phone-cloud-id',
       },
-      identity: { openId: 'registered-openid' },
+      identity: { emasUserId: 'registered-openid' },
     }
 
     const first = await router(request)
@@ -149,7 +149,7 @@ describe('CloudBase action router', () => {
       ok: true,
       data: { name: '陈澄新昵称', phone: '13800000000' },
     })
-    expect(store.users.filter((user) => user.openId === 'registered-openid')).toHaveLength(1)
+    expect(store.users.filter((user) => user.emasUserId === 'registered-openid')).toHaveLength(1)
     expect(resolvePhoneNumber).toHaveBeenCalledTimes(2)
   })
 
@@ -168,7 +168,7 @@ describe('CloudBase action router', () => {
         avatarUrl: 'cloud://test-env/avatar/manual.jpg',
         phone: '13800000000',
       },
-      identity: { openId: 'manual-phone-openid' },
+      identity: { emasUserId: 'manual-phone-openid' },
     })
 
     expect(response).toMatchObject({
@@ -191,7 +191,7 @@ describe('CloudBase action router', () => {
       action: 'getSchedule',
       requestId: 'schedule-defaults',
       payload: { coachId: 'coach-1', date: '2026-09-01', includeClosed: true },
-      identity: { openId: 'dev-member-openid' },
+      identity: { emasUserId: 'dev-member-openid' },
     })
 
     if (!response.ok) throw new Error('排班读取失败')
@@ -226,14 +226,14 @@ describe('CloudBase action router', () => {
     const handler = createCloudHandler(
       store,
       { developmentPaymentsEnabled: true, production: false },
-      () => ({ openId: 'dev-member-openid' }),
+      () => ({ emasUserId: 'dev-member-openid' }),
     )
 
     const response = await handler({
       action: 'bootstrap',
       requestId: 'bootstrap-server-identity',
       payload: {},
-      identity: { openId: 'forged-openid' },
+      identity: { emasUserId: 'forged-openid' },
     })
 
     expect(response).toMatchObject({
@@ -281,7 +281,7 @@ describe('CloudBase action router', () => {
       action: 'bootstrap',
       requestId: 'bootstrap-coach',
       payload: { activeRole: 'coach' },
-      identity: { openId: 'dev-coach-openid' },
+      identity: { emasUserId: 'dev-coach-openid' },
     })
 
     expect(response).toMatchObject({
@@ -327,7 +327,7 @@ describe('CloudBase action router', () => {
         },
       }),
     })
-    const identity = { openId: 'dev-member-openid' }
+    const identity = { emasUserId: 'dev-member-openid' }
     const purchased = await router({
       action: 'purchase',
       requestId: 'purchase-1',
@@ -369,7 +369,7 @@ describe('CloudBase action router', () => {
     const seed = createDevelopmentSeed()
     seed.users?.push({
       id: 'member-2',
-      openId: 'openid-member-2',
+      emasUserId: 'openid-member-2',
       name: '其他会员',
       phone: '13900000000',
       roles: ['member'],
@@ -395,7 +395,7 @@ describe('CloudBase action router', () => {
       action: 'getSchedule',
       requestId: 'schedule-safe-occupancy',
       payload: { coachId: 'coach-1' },
-      identity: { openId: 'dev-member-openid' },
+      identity: { emasUserId: 'dev-member-openid' },
     })
 
     expect(response).toEqual({
@@ -552,7 +552,7 @@ describe('CloudBase action router', () => {
       developmentPaymentsEnabled: false,
       production: true,
     })
-    const identity = { openId: 'dev-coach-openid' }
+    const identity = { emasUserId: 'dev-coach-openid' }
 
     await router({
       action: 'getSchedule',
@@ -611,7 +611,7 @@ describe('CloudBase action router', () => {
       action: 'setSchedule',
       requestId: `schedule-${_label}`,
       payload: { slots: [] },
-      identity: { openId: coachUser.openId },
+      identity: { emasUserId: coachUser.emasUserId },
     })
 
     expect(response).toMatchObject({ ok: false, error: { code: 'UNAUTHORIZED' } })
@@ -628,7 +628,7 @@ describe('CloudBase action router', () => {
       action: 'purchase',
       requestId: 'test-cloud-purchase',
       payload: { productId: 'product-1', coachId: 'coach-1' },
-      identity: { openId: 'dev-member-openid' },
+      identity: { emasUserId: 'dev-member-openid' },
     })
     expect(purchase).toMatchObject({
       ok: true,
@@ -643,7 +643,7 @@ describe('CloudBase action router', () => {
       action: 'createDevPayment',
       requestId: 'settle-test-cloud-purchase',
       payload: { orderId },
-      identity: { openId: 'dev-member-openid' },
+      identity: { emasUserId: 'dev-member-openid' },
     })
     expect(paid).toMatchObject({ ok: true, data: { memberId: 'member-1' } })
   })
@@ -663,7 +663,7 @@ describe('CloudBase action router', () => {
       action: 'purchase',
       requestId: 'purchase-network-failure',
       payload: { productId: 'product-1', coachId: 'coach-1' },
-      identity: { openId: 'dev-member-openid' },
+      identity: { emasUserId: 'dev-member-openid' },
     })
 
     expect(response).toEqual({
@@ -685,7 +685,7 @@ describe('CloudBase action router', () => {
     const handler = createCloudHandler(
       store,
       { developmentPaymentsEnabled: false, production: true },
-      () => ({ openId: 'dev-member-openid' }),
+      () => ({ emasUserId: 'dev-member-openid' }),
     )
 
     await expect(

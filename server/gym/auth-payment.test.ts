@@ -32,7 +32,7 @@ describe('权限', () => {
 describe('支付边界', () => {
   const member: User = {
     id: 'member-1',
-    openId: 'openid-member',
+    emasUserId: 'openid-member',
     name: '会员',
     roles: ['member'],
   }

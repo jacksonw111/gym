@@ -23,7 +23,7 @@ describe('user roles', () => {
   it('expresses a dual-role account without a special dual role', () => {
     const user: User = {
       id: 'dual-role-user',
-      openId: 'dual-role-open-id',
+      emasUserId: 'dual-role-open-id',
       name: '双身份用户',
       roles: ['member', 'coach'],
     }
@@ -35,7 +35,7 @@ describe('user roles', () => {
   it('returns false when a single-role account lacks the requested role', () => {
     const user: User = {
       id: 'member-only-user',
-      openId: 'member-only-open-id',
+      emasUserId: 'member-only-open-id',
       name: '会员用户',
       roles: ['member'],
     }

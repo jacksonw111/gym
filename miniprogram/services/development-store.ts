@@ -73,7 +73,7 @@ const createSeed = (now: Date): DevelopmentState => {
   return {
     user: {
       id: 'member-chen',
-      openId: 'development-openid',
+      emasUserId: 'development-openid',
       name: '陈予安',
       phone: '138 0013 8000',
       roles: ['member', 'coach'],

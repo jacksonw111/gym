@@ -8,13 +8,13 @@ export const createDevelopmentSeed = (): StoreSeed => ({
   users: [
     {
       id: 'member-1',
-      openId: 'dev-member-openid',
+      emasUserId: 'dev-member-openid',
       name: '示例会员',
       roles: ['member'],
     },
     {
       id: 'coach-user-1',
-      openId: 'dev-coach-openid',
+      emasUserId: 'dev-coach-openid',
       name: '示例教练',
       roles: ['coach'],
     },

@@ -2,9 +2,9 @@ import { init } from '@cloudbase/node-sdk'
 import {
   createPaymentNotificationHandler,
   createRemoteWechatNotificationVerifier,
-} from '../../gym-api/src/payment'
-import { DomainError } from '../../gym-api/src/store'
-import { CloudBaseStore, type CloudDatabase } from '../../gym-api/src/store-cloudbase'
+} from '../../../server/gym/payment'
+import { DomainError } from '../../../server/gym/store'
+import { CloudBaseStore, type CloudDatabase } from '../../../server/gym/store-cloudbase'
 
 interface HttpEvent {
   headers?: Record<string, string>

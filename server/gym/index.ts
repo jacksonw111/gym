@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { init } from '@cloudbase/node-sdk'
-import * as wxCloud from 'wx-server-sdk'
 import { createAppeal, decideAppeal } from './appeals'
 import type { Actor } from './auth'
 import {
@@ -12,8 +10,7 @@ import {
   saveFeedback,
 } from './lessons'
 import { adjustBalance, createOrder } from './packages'
-import { createDevPayment, createWechatPaymentProvider, type PaymentEnvironment } from './payment'
-import { phoneNumberFromOpenData } from './phone'
+import { createDevPayment, type PaymentEnvironment } from './payment'
 import { hashAdminPassword } from './seed'
 import {
   type Admin,
@@ -25,22 +22,18 @@ import {
   type Store,
   type User,
 } from './store'
-import { CloudBaseStore, type CloudDatabase } from './store-cloudbase'
-
-wxCloud.init({ env: wxCloud.DYNAMIC_CURRENT_ENV as unknown as string })
 
 export interface ApiRequest {
   action: string
   requestId: string
   payload: unknown
-  identity?: { openId: string }
+  identity?: { emasUserId: string }
   authToken?: string
   internalToken?: string
 }
 
 export type ApiResponse =
-  | { ok: true; data: unknown }
-  | { ok: false; error: { code: string; message: string } }
+  { ok: true; data: unknown } | { ok: false; error: { code: string; message: string } }
 
 class ApiError extends Error {
   constructor(
@@ -73,8 +66,8 @@ const requiredString = (payload: ObjectPayload, key: string): string => {
 }
 
 const getCurrentUser = (store: Store, request: ApiRequest): User => {
-  const openId = request.identity?.openId
-  const user = openId ? store.users.find((item) => item.openId === openId) : undefined
+  const emasUserId = request.identity?.emasUserId
+  const user = emasUserId ? store.users.find((item) => item.emasUserId === emasUserId) : undefined
   if (!user) throw new ApiError('UNAUTHORIZED', '请先登录')
   return user
 }
@@ -204,9 +197,7 @@ const mutateAdminResource = (
     if (existingIndex < 0) collection.push(record)
     else {
       collection[existingIndex] = { ...collection[existingIndex], ...record } as
-        | User
-        | Coach
-        | Product
+        User | Coach | Product
     }
     return existingIndex < 0 ? record : collection[existingIndex]
   }
@@ -256,8 +247,8 @@ export const createRouter = (
       const now = nowProvider()
       switch (request.action) {
         case 'bootstrap': {
-          const currentUser = request.identity?.openId
-            ? store.users.find((item) => item.openId === request.identity?.openId)
+          const currentUser = request.identity?.emasUserId
+            ? store.users.find((item) => item.emasUserId === request.identity?.emasUserId)
             : undefined
           if (!currentUser) {
             return {
@@ -348,8 +339,8 @@ export const createRouter = (
         case 'listCoaches':
           return { ok: true, data: store.coaches.filter((item) => item.status === 'active') }
         case 'registerMember': {
-          const openId = request.identity?.openId
-          if (!openId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
+          const emasUserId = request.identity?.emasUserId
+          if (!emasUserId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
           const name = requiredString(payload, 'name').trim()
           const avatarUrl = requiredString(payload, 'avatarUrl')
           const phoneCloudId =
@@ -376,7 +367,7 @@ export const createRouter = (
           if (!phone) throw new ApiError('INVALID_REQUEST', '手机号不能为空')
           const phoneVerified = Boolean(phoneCloudId)
           const user = await store.transaction(() => {
-            const existing = store.users.find((item) => item.openId === openId)
+            const existing = store.users.find((item) => item.emasUserId === emasUserId)
             if (existing) {
               existing.name = name
               existing.avatarUrl = avatarUrl
@@ -387,7 +378,7 @@ export const createRouter = (
             }
             const created: User = {
               id: store.nextId('user'),
-              openId,
+              emasUserId,
               name,
               avatarUrl,
               phone,
@@ -416,8 +407,8 @@ export const createRouter = (
               }
             })
           }
-          const currentUser = request.identity?.openId
-            ? store.users.find((item) => item.openId === request.identity?.openId)
+          const currentUser = request.identity?.emasUserId
+            ? store.users.find((item) => item.emasUserId === request.identity?.emasUserId)
             : undefined
           const currentCoach = currentUser?.roles.includes('coach')
             ? store.coaches.find(
@@ -700,9 +691,7 @@ interface LoadableStore extends Store {
 }
 
 type IdentityProvider = () =>
-  | { openId?: string }
-  | undefined
-  | Promise<{ openId?: string } | undefined>
+  { emasUserId?: string } | undefined | Promise<{ emasUserId?: string } | undefined>
 
 export const createCloudHandler = (
   store: LoadableStore,
@@ -716,7 +705,9 @@ export const createCloudHandler = (
       const serverIdentity = await getServerIdentity()
       return router({
         ...event,
-        identity: serverIdentity?.openId ? { openId: serverIdentity.openId } : undefined,
+        identity: serverIdentity?.emasUserId
+          ? { emasUserId: serverIdentity.emasUserId }
+          : undefined,
       })
     } catch (error) {
       return errorResponse(error)
@@ -743,45 +734,4 @@ export const createInternalSchedulerHandler = (
       return errorResponse(error)
     }
   }
-}
-
-export const main = async (event: ApiRequest): Promise<ApiResponse> => {
-  const app = init({ env: process.env.TCB_ENV })
-  const store = new CloudBaseStore(app.database() as unknown as CloudDatabase)
-  if (event.action === '__internalAutoCompleteLessons') {
-    try {
-      await store.load()
-    } catch (error) {
-      return errorResponse(error)
-    }
-    return createInternalSchedulerHandler(
-      store,
-      process.env.INTERNAL_SCHEDULER_TOKEN,
-    )(event.internalToken)
-  }
-  const paymentEndpoint = process.env.WECHAT_PAYMENT_CREATE_URL
-  const paymentApiToken = process.env.WECHAT_PAYMENT_API_TOKEN
-  const isTestEnvironment = process.env.TCB_ENV === 'cloud1-d1gmh1lu77f6e8c06'
-  const handler = createCloudHandler(
-    store,
-    {
-      developmentPaymentsEnabled:
-        isTestEnvironment || process.env.DEVELOPMENT_PAYMENTS_ENABLED === 'true',
-      production:
-        process.env.GYM_PRODUCTION === undefined
-          ? !isTestEnvironment
-          : process.env.GYM_PRODUCTION !== 'false',
-      createPaymentParameters:
-        paymentEndpoint && paymentApiToken
-          ? createWechatPaymentProvider({
-              endpoint: paymentEndpoint,
-              apiToken: paymentApiToken,
-            })
-          : undefined,
-      resolvePhoneNumber: async (cloudId) =>
-        phoneNumberFromOpenData(await wxCloud.getOpenData({ list: [cloudId] })),
-    },
-    () => app.auth().getUserInfo(),
-  )
-  return handler(event)
 }
