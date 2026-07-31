@@ -47,7 +47,7 @@ class ApiError extends Error {
 type ObjectPayload = Record<string, unknown>
 
 export interface GymEnvironment extends PaymentEnvironment {
-  resolvePhoneNumber?: (cloudId: string) => Promise<string>
+  resolvePhoneNumber?: (code: string) => Promise<string>
 }
 
 const asObject = (payload: unknown): ObjectPayload => {
@@ -343,29 +343,28 @@ export const createRouter = (
           if (!emasUserId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
           const name = requiredString(payload, 'name').trim()
           const avatarUrl = requiredString(payload, 'avatarUrl')
-          const phoneCloudId =
-            typeof payload.phoneCloudId === 'string' ? payload.phoneCloudId : undefined
+          const phoneCode = typeof payload.phoneCode === 'string' ? payload.phoneCode : undefined
           const manualPhone = typeof payload.phone === 'string' ? payload.phone.trim() : undefined
           if (name.length < 1 || name.length > 32) {
             throw new ApiError('INVALID_REQUEST', '昵称长度应为 1—32 个字符')
           }
-          if (!avatarUrl.startsWith('cloud://')) {
+          if (!avatarUrl.startsWith('https://')) {
             throw new ApiError('INVALID_REQUEST', '头像必须来自当前云存储')
           }
-          if (Boolean(phoneCloudId) === Boolean(manualPhone)) {
+          if (Boolean(phoneCode) === Boolean(manualPhone)) {
             throw new ApiError('INVALID_REQUEST', '请选择微信授权或手动填写手机号')
           }
           if (manualPhone && !/^1[3-9]\d{9}$/.test(manualPhone)) {
             throw new ApiError('INVALID_REQUEST', '手机号格式不正确')
           }
-          if (phoneCloudId && !environment.resolvePhoneNumber) {
+          if (phoneCode && !environment.resolvePhoneNumber) {
             throw new ApiError('SERVICE_UNAVAILABLE', '手机号授权服务未配置')
           }
-          const phone = phoneCloudId
-            ? await environment.resolvePhoneNumber?.(phoneCloudId)
+          const phone = phoneCode
+            ? await environment.resolvePhoneNumber?.(phoneCode)
             : manualPhone
           if (!phone) throw new ApiError('INVALID_REQUEST', '手机号不能为空')
-          const phoneVerified = Boolean(phoneCloudId)
+          const phoneVerified = Boolean(phoneCode)
           const user = await store.transaction(() => {
             const existing = store.users.find((item) => item.emasUserId === emasUserId)
             if (existing) {
@@ -693,7 +692,7 @@ interface LoadableStore extends Store {
 type IdentityProvider = () =>
   { emasUserId?: string } | undefined | Promise<{ emasUserId?: string } | undefined>
 
-export const createCloudHandler = (
+export const createGymHandler = (
   store: LoadableStore,
   environment: GymEnvironment,
   getServerIdentity: IdentityProvider,

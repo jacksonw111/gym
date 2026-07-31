@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createCloudHandler, createRouter } from './index'
+import { createGymHandler, createRouter } from './index'
 import { createDevelopmentSeed } from './seed'
 import { MemoryStore } from './store'
 
-describe('CloudBase action router', () => {
+describe('gym action router', () => {
   it('未知 action 返回统一中文错误', async () => {
     const router = createRouter(new MemoryStore(), {
       developmentPaymentsEnabled: false,
@@ -122,8 +122,8 @@ describe('CloudBase action router', () => {
       requestId: 'register-1',
       payload: {
         name: '陈澄',
-        avatarUrl: 'cloud://test-env/avatar/member.jpg',
-        phoneCloudId: 'phone-cloud-id',
+        avatarUrl: 'https://storage.example/avatar/member.jpg',
+        phoneCode: 'phone-code',
       },
       identity: { emasUserId: 'registered-openid' },
     }
@@ -133,7 +133,7 @@ describe('CloudBase action router', () => {
       ok: true,
       data: {
         name: '陈澄',
-        avatarUrl: 'cloud://test-env/avatar/member.jpg',
+        avatarUrl: 'https://storage.example/avatar/member.jpg',
         phone: '13800000000',
         roles: ['member'],
       },
@@ -165,7 +165,7 @@ describe('CloudBase action router', () => {
       requestId: 'register-manual-phone',
       payload: {
         name: '手动填写会员',
-        avatarUrl: 'cloud://test-env/avatar/manual.jpg',
+        avatarUrl: 'https://storage.example/avatar/manual.jpg',
         phone: '13800000000',
       },
       identity: { emasUserId: 'manual-phone-openid' },
@@ -223,7 +223,7 @@ describe('CloudBase action router', () => {
 
   it('云入口忽略客户端伪造 identity，只采用服务端解析结果', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
-    const handler = createCloudHandler(
+    const handler = createGymHandler(
       store,
       { developmentPaymentsEnabled: true, production: false },
       () => ({ emasUserId: 'dev-member-openid' }),
@@ -682,7 +682,7 @@ describe('CloudBase action router', () => {
       throw new Error('database credential leaked')
     }
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const handler = createCloudHandler(
+    const handler = createGymHandler(
       store,
       { developmentPaymentsEnabled: false, production: true },
       () => ({ emasUserId: 'dev-member-openid' }),
