@@ -385,6 +385,37 @@ export const createRouter = (
           })
           return { ok: true, data: user }
         }
+        case 'registerTestMember': {
+          if (environment.production || !environment.developmentPaymentsEnabled) {
+            throw new ApiError('UNAUTHORIZED', '当前环境不允许模拟器测试登录')
+          }
+          const openId = request.identity?.openId
+          if (!openId) throw new ApiError('UNAUTHORIZED', '无法获取微信用户身份')
+          const requestedName = typeof payload.name === 'string' ? payload.name.trim() : ''
+          const name = requestedName || '模拟器测试会员'
+          if (name.length > 32) {
+            throw new ApiError('INVALID_REQUEST', '昵称长度应为 1—32 个字符')
+          }
+          const user = await store.transaction(() => {
+            const existing = store.users.find((item) => item.openId === openId)
+            if (existing) {
+              existing.name = name
+              existing.phone = '13800000000'
+              if (!existing.roles.includes('member')) existing.roles.push('member')
+              return existing
+            }
+            const created: User = {
+              id: store.nextId('user'),
+              openId,
+              name,
+              phone: '13800000000',
+              roles: ['member'],
+            }
+            store.users.push(created)
+            return created
+          })
+          return { ok: true, data: user }
+        }
         case 'getSchedule': {
           const coachId = requiredString(payload, 'coachId')
           const coach = store.coaches.find(
@@ -747,11 +778,16 @@ export const main = async (event: ApiRequest): Promise<ApiResponse> => {
   }
   const paymentEndpoint = process.env.WECHAT_PAYMENT_CREATE_URL
   const paymentApiToken = process.env.WECHAT_PAYMENT_API_TOKEN
+  const isTestEnvironment = process.env.TCB_ENV === 'cloud1-d1gmh1lu77f6e8c06'
   const handler = createCloudHandler(
     store,
     {
-      developmentPaymentsEnabled: process.env.DEVELOPMENT_PAYMENTS_ENABLED === 'true',
-      production: process.env.GYM_PRODUCTION !== 'false',
+      developmentPaymentsEnabled:
+        isTestEnvironment || process.env.DEVELOPMENT_PAYMENTS_ENABLED === 'true',
+      production:
+        process.env.GYM_PRODUCTION === undefined
+          ? !isTestEnvironment
+          : process.env.GYM_PRODUCTION !== 'false',
       createPaymentParameters:
         paymentEndpoint && paymentApiToken
           ? createWechatPaymentProvider({

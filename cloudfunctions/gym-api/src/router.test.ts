@@ -153,6 +153,49 @@ describe('CloudBase action router', () => {
     expect(resolvePhoneNumber).toHaveBeenCalledTimes(2)
   })
 
+  it('模拟器测试登录只在测试环境创建会员', async () => {
+    const developmentStore = new MemoryStore(createDevelopmentSeed())
+    const developmentRouter = createRouter(developmentStore, {
+      developmentPaymentsEnabled: true,
+      production: false,
+    })
+
+    const response = await developmentRouter({
+      action: 'registerTestMember',
+      requestId: 'register-test-member',
+      payload: { name: '模拟器会员' },
+      identity: { openId: 'simulator-openid' },
+    })
+
+    expect(response).toMatchObject({
+      ok: true,
+      data: {
+        name: '模拟器会员',
+        phone: '13800000000',
+        roles: ['member'],
+      },
+    })
+    expect(
+      developmentStore.users.filter((user) => user.openId === 'simulator-openid'),
+    ).toHaveLength(1)
+
+    const productionRouter = createRouter(new MemoryStore(createDevelopmentSeed()), {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    await expect(
+      productionRouter({
+        action: 'registerTestMember',
+        requestId: 'reject-test-member',
+        payload: { name: '不应创建' },
+        identity: { openId: 'production-openid' },
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'UNAUTHORIZED' },
+    })
+  })
+
   it('getSchedule 为真实教练日期首次访问创建默认开放的十一个时段', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const router = createRouter(store, {

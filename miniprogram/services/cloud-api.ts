@@ -32,6 +32,7 @@ import type {
   PurchaseResult,
   QueryPurchaseInput,
   RegisterMemberInput,
+  RegisterTestMemberInput,
   SaveFeedbackInput,
   SessionView,
   SetDayAvailabilityInput,
@@ -126,6 +127,21 @@ export class CloudApi implements GymApi {
         avatarUrl: input.avatarUrl,
         phoneCloudId: input.phoneCloudId,
       },
+      input.requestId,
+    )
+    const data = await this.bootstrap(input.requestId)
+    const profile = this.requireProfile(data)
+    return {
+      authenticated: true,
+      user: profile,
+      role: data.activeRole ?? profile.roles[0] ?? 'member',
+    }
+  }
+
+  async registerTestMember(input: RegisterTestMemberInput): Promise<SessionView> {
+    await this.call(
+      'registerTestMember',
+      { name: input.name?.trim() || '模拟器测试会员' },
       input.requestId,
     )
     const data = await this.bootstrap(input.requestId)

@@ -1,3 +1,4 @@
+import { getEnvironment } from '../../config/env'
 import { type LoginReturn, registrationReady } from '../../models/auth'
 import { createRequestId, getApi } from '../../services/api'
 
@@ -21,11 +22,13 @@ Page({
     ready: false,
     submitting: false,
     error: '',
+    testLoginEnabled: false,
   },
 
   onLoad(query: Record<string, string | undefined>) {
     this.setData({
       returnTo: query.returnTo === 'checkout' ? 'checkout' : 'profile',
+      testLoginEnabled: getEnvironment().testPaymentEnabled,
     })
   },
 
@@ -53,7 +56,7 @@ Page({
     }
     const phoneCloudId = event.detail.cloudID
     if (!phoneCloudId) {
-      this.setData({ error: '未获得手机号授权，你可以稍后重新尝试。' })
+      this.setData({ error: '模拟器无法授权真实手机号，请使用下方的“模拟器测试登录”。' })
       return
     }
     this.setData({ submitting: true, error: '' })
@@ -74,6 +77,26 @@ Page({
     } catch (error) {
       this.setData({
         error: error instanceof Error ? error.message : '登录失败，请重试',
+        submitting: false,
+      })
+    }
+  },
+
+  async testLogin() {
+    if (this.data.submitting || !this.data.testLoginEnabled) {
+      return
+    }
+    this.setData({ submitting: true, error: '' })
+    try {
+      await getApi().registerTestMember({
+        name: this.data.nickname.trim() || '模拟器测试会员',
+        requestId: createRequestId('register-test'),
+      })
+      wx.showToast({ title: '测试登录成功', icon: 'success' })
+      setTimeout(() => wx.navigateBack(), 500)
+    } catch (error) {
+      this.setData({
+        error: error instanceof Error ? error.message : '测试登录失败',
         submitting: false,
       })
     }

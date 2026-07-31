@@ -36,7 +36,20 @@
       loading="{{submitting}}"
       bindgetphonenumber="authorizePhone"
     >{{submitting ? '正在建立档案' : '授权手机号并登录'}}</button>
+    <text wx:if="{{!ready}}" class="login-hint">请先选择头像并填写昵称，真实登录按钮才会启用。</text>
     <text class="privacy-note">微信会在你点击上方按钮后显示手机号授权确认。</text>
+    <view wx:if="{{testLoginEnabled}}" class="test-login">
+      <view class="test-login__divider">
+        <text>开发工具测试</text>
+      </view>
+      <button
+        class="secondary-button test-login__button"
+        disabled="{{submitting}}"
+        loading="{{submitting}}"
+        bindtap="testLogin"
+      >模拟器测试登录</button>
+      <text class="privacy-note">仅开发版和体验版显示，不需要手机号授权，不会出现在正式版。</text>
+    </view>
     <text wx:if="{{error}}" class="login-error">{{error}}</text>
   </view>
 </view>
