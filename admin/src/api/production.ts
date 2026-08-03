@@ -1,6 +1,7 @@
 import { normalizeAdminData, toCloudProductInput } from './normalize'
 import type {
   AdminApi,
+  AdminPage,
   CoachInput,
   CoachLeaveResult,
   CoachStatus,
@@ -46,16 +47,11 @@ export const createProductionApi = (envId: string): AdminApi => {
     async logout() {
       sessionStorage.removeItem(SESSION_KEY)
     },
-    async loadData() {
-      const [dashboard, bookings, appeals] = await Promise.all([
-        call<unknown>('adminCrud', {
-          resource: 'dashboard',
-          operation: 'list',
-        }),
-        call<unknown>('listBookings'),
-        call<unknown>('listAppeals'),
-      ])
-      return normalizeAdminData(dashboard, bookings, appeals)
+    async loadData(page: AdminPage) {
+      const snapshot = await call<
+        Record<string, unknown> & { bookings?: unknown; appeals?: unknown }
+      >('adminPage', { page })
+      return normalizeAdminData(snapshot, snapshot.bookings ?? [], snapshot.appeals ?? [])
     },
     saveCoach: (input: CoachInput) =>
       call<{ id: string }>('adminCrud', {

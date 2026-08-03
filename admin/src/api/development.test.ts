@@ -7,11 +7,11 @@ beforeEach(resetDevelopmentData)
 
 describe('开发数据课时守恒', () => {
   it('通过申诉只把一节 used 退回 available，total 不变且不能重复退款', async () => {
-    const before = await developmentApi.loadData()
+    const before = await developmentApi.loadData('coaches')
     const original = before.members[0]?.packages[0]
 
     await developmentApi.decideAppeal('appeal-240730', 'approve', '核实后退回')
-    const afterFirst = await developmentApi.loadData()
+    const afterFirst = await developmentApi.loadData('coaches')
     const refunded = afterFirst.members[0]?.packages[0]
 
     expect(refunded).toMatchObject({
@@ -22,13 +22,13 @@ describe('开发数据课时守恒', () => {
     await expect(
       developmentApi.decideAppeal('appeal-240730', 'approve', '重复提交'),
     ).rejects.toThrow('申诉已经处理')
-    const afterSecond = await developmentApi.loadData()
+    const afterSecond = await developmentApi.loadData('coaches')
     expect(afterSecond.members[0]?.packages[0]).toEqual(refunded)
   })
 
   it('人工调课保存带原因且不可变的余额变更记录', async () => {
     await developmentApi.adjustPackage('package-chen-advanced', 2, '线下补课')
-    const after = await developmentApi.loadData()
+    const after = await developmentApi.loadData('coaches')
 
     expect(after.members[0]?.packages[0]).toMatchObject({
       available: 8,
@@ -42,12 +42,12 @@ describe('开发数据课时守恒', () => {
         }),
       ],
     })
-    const firstRead = await developmentApi.loadData()
+    const firstRead = await developmentApi.loadData('products')
     const record = firstRead.members[0]?.packages[0] as unknown as {
       changes: Array<{ note: string }>
     }
     if (record.changes[0]) record.changes[0].note = '被外部修改'
-    const secondRead = await developmentApi.loadData()
+    const secondRead = await developmentApi.loadData('products')
     expect(secondRead.members[0]?.packages[0]).toMatchObject({
       changes: [expect.objectContaining({ note: '线下补课' })],
     })
@@ -64,7 +64,7 @@ describe('课包有效期与教练离职', () => {
       coachId: 'coach-linxiao',
       validDays: 60,
     })
-    const withValidity = await developmentApi.loadData()
+    const withValidity = await developmentApi.loadData('products')
     expect(withValidity.products.find((item) => item.id === 'product-basic')?.validDays).toBe(60)
 
     await developmentApi.saveProduct({
@@ -74,7 +74,7 @@ describe('课包有效期与教练离职', () => {
       lessons: 8,
       coachId: 'coach-linxiao',
     })
-    const cleared = await developmentApi.loadData()
+    const cleared = await developmentApi.loadData('products')
     expect(cleared.products.find((item) => item.id === 'product-basic')?.validDays).toBeUndefined()
   })
 
@@ -85,7 +85,7 @@ describe('课包有效期与教练离职', () => {
       unpublishedProducts: 2,
       transferCoachName: '周岚',
     })
-    const after = await developmentApi.loadData()
+    const after = await developmentApi.loadData('products')
     expect(after.coaches.find((item) => item.id === 'coach-linxiao')?.status).toBe('inactive')
     expect(after.members[0]?.packages[0]?.coachId).toBe('coach-zhoulan')
     expect(

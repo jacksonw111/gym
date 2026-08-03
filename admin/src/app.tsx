@@ -211,21 +211,24 @@ export function App({ api = adminApi }: { api?: AdminApi }) {
   const [loggingOut, setLoggingOut] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  const refresh = useCallback(async () => {
-    setError('')
-    setRefreshing(true)
-    try {
-      setData(await api.loadData())
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : '数据加载失败')
-    } finally {
-      setRefreshing(false)
-    }
-  }, [api])
+  const refresh = useCallback(
+    async (targetPage: Page) => {
+      setError('')
+      setRefreshing(true)
+      try {
+        setData(await api.loadData(targetPage))
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : '数据加载失败')
+      } finally {
+        setRefreshing(false)
+      }
+    },
+    [api],
+  )
 
   useEffect(() => {
-    if (authenticated) void refresh()
-  }, [authenticated, refresh])
+    if (authenticated) void refresh(page)
+  }, [authenticated, page, refresh])
 
   const logout = async () => {
     setLoggingOut(true)
@@ -262,7 +265,7 @@ export function App({ api = adminApi }: { api?: AdminApi }) {
         <button
           type="button"
           className="primary-button"
-          onClick={() => void refresh()}
+          onClick={() => void refresh(page)}
           disabled={refreshing}
           aria-busy={refreshing}
         >
@@ -287,7 +290,7 @@ export function App({ api = adminApi }: { api?: AdminApi }) {
       data={data}
       page={page}
       onNavigate={navigate}
-      onRefresh={refresh}
+      onRefresh={() => refresh(page)}
       onLogout={() => void logout()}
       transitionLabel={transition?.label ?? null}
       loggingOut={loggingOut}

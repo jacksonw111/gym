@@ -13,6 +13,7 @@
     "admin:typecheck": "tsc --noEmit -p admin/tsconfig.json",
     "cloud:test": "vitest run cloudfunctions",
     "cloud:build": "npm run build --prefix cloudfunctions/gym-api && npm run build --prefix cloudfunctions/auto-complete-lessons && npm run build --prefix cloudfunctions/wechat-payment-notify",
+    "cloud:migrate": "node scripts/deploy-cloudbase-database.mjs",
     "verify:production-config": "node scripts/verify-production-config.mjs",
     "format": "biome format --write . && prettier --write \"miniprogram/**/*.{wxml,less}\"",
     "lint": "biome lint . && stylelint \"miniprogram/**/*.less\"",

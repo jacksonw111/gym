@@ -210,6 +210,18 @@ describe('production CloudApi adapter', () => {
     expect(bootstrapCalls.at(-1)?.payload).toMatchObject({ activeRole: 'coach' })
   })
 
+  it('tells the backend which page data is required', async () => {
+    const { cloudCall } = installWechat(async () => ok(bootstrap()))
+    const api = new CloudApi()
+
+    await api.getSession()
+    await api.getMemberHome()
+
+    const calls = cloudCall.mock.calls.map(([input]) => input.data)
+    expect(calls[0]?.payload).toMatchObject({ view: 'session' })
+    expect(calls[1]?.payload).toMatchObject({ view: 'memberHome' })
+  })
+
   it('sends the switched role on the confirming bootstrap request', async () => {
     const { cloudCall } = installWechat(async ({ data }) =>
       ok(bootstrap({ activeRole: data.payload.activeRole ?? 'member' })),
@@ -222,23 +234,29 @@ describe('production CloudApi adapter', () => {
     const bootstrapCalls = cloudCall.mock.calls
       .map(([input]) => input.data)
       .filter((data) => data.action === 'bootstrap')
-    expect(bootstrapCalls.at(-1)?.payload).toEqual({ activeRole: 'coach' })
+    expect(bootstrapCalls.at(-1)?.payload).toMatchObject({
+      view: 'session',
+      activeRole: 'coach',
+    })
   })
 
   it('merges a booked lesson into the remote schedule and generates its label', async () => {
-    installWechat(async ({ data }) => {
-      if (data.action === 'getSchedule') {
-        return ok([
-          {
-            id: 'slot-1',
-            coachId: 'coach-1',
-            startsAt: bookedLesson.startsAt,
-            endsAt: bookedLesson.endsAt,
-            open: true,
-          },
-        ])
+    const { cloudCall } = installWechat(async ({ data }) => {
+      if (data.action === 'getCoachScheduleView') {
+        return ok({
+          context: bootstrap({ lessons: [bookedLesson] }),
+          slots: [
+            {
+              id: 'slot-1',
+              coachId: 'coach-1',
+              startsAt: bookedLesson.startsAt,
+              endsAt: bookedLesson.endsAt,
+              open: true,
+            },
+          ],
+        })
       }
-      return ok(bootstrap({ lessons: [bookedLesson] }))
+      throw new Error(`unexpected action: ${data.action}`)
     })
     const schedule = await new CloudApi().getCoachSchedule('coach-1', '2026-08-02')
     const slot = schedule.slots[0]
@@ -255,6 +273,24 @@ describe('production CloudApi adapter', () => {
         viewerMemberId: 'user-1',
       }),
     ).toMatchObject({ status: 'occupied', label: '已预约' })
+    expect(cloudCall).toHaveBeenCalledTimes(1)
+  })
+
+  it('loads the coach own schedule with one cloud request', async () => {
+    const { cloudCall } = installWechat(async ({ data }) => {
+      if (data.action !== 'getOwnCoachScheduleView') {
+        throw new Error(`unexpected action: ${data.action}`)
+      }
+      return ok({
+        context: bootstrap({ activeRole: 'coach' }),
+        slots: [],
+      })
+    })
+
+    const result = await new CloudApi().getOwnCoachSchedule('2026-08-02')
+
+    expect(result.coach.id).toBe('coach-1')
+    expect(cloudCall).toHaveBeenCalledTimes(1)
   })
 
   it('never substitutes the current coach profile for missing member details', async () => {
@@ -398,17 +434,20 @@ describe('production CloudApi adapter', () => {
 
   it('uses the remote occupied flag without exposing another member', async () => {
     installWechat(async ({ data }) => {
-      if (data.action === 'getSchedule') {
-        return ok([
-          {
-            startsAt: bookedLesson.startsAt,
-            endsAt: bookedLesson.endsAt,
-            open: true,
-            occupied: true,
-          },
-        ])
+      if (data.action === 'getCoachScheduleView') {
+        return ok({
+          context: bootstrap({ lessons: [] }),
+          slots: [
+            {
+              startsAt: bookedLesson.startsAt,
+              endsAt: bookedLesson.endsAt,
+              open: true,
+              occupied: true,
+            },
+          ],
+        })
       }
-      return ok(bootstrap({ lessons: [] }))
+      throw new Error(`unexpected action: ${data.action}`)
     })
 
     const slot = (await new CloudApi().getCoachSchedule('coach-1', '2026-08-02')).slots[0]

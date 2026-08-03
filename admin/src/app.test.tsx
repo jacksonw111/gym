@@ -77,6 +77,21 @@ describe('管理员登录', () => {
 })
 
 describe('后台管理流程', () => {
+  it('进入后台和切换页面时只查询当前页面', async () => {
+    const loadData = vi.fn((page) => developmentApi.loadData(page))
+    const api = { ...developmentApi, getSession: () => true, loadData }
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await screen.findByRole('navigation', { name: '后台导航' })
+    expect(loadData).toHaveBeenLastCalledWith('dashboard')
+
+    await user.click(screen.getByRole('button', { name: '课包' }))
+    await screen.findByRole('heading', { name: '课包管理' })
+    expect(loadData).toHaveBeenLastCalledWith('products')
+    expect(loadData).toHaveBeenCalledTimes(2)
+  })
+
   it('点击导航可切换到会员页面', async () => {
     const user = await login()
 
@@ -208,7 +223,7 @@ describe('后台管理流程', () => {
   })
 
   it('多课包会员只调整点击的第二份课包', async () => {
-    const data = await developmentApi.loadData()
+    const data = await developmentApi.loadData('appeals')
     const member = data.members[0]
     member?.packages.push({
       id: 'package-chen-trial',
@@ -238,7 +253,7 @@ describe('后台管理流程', () => {
     await user.type(secondReason, '第二份课包线下补课')
     await user.click(secondButton)
 
-    const after = await developmentApi.loadData()
+    const after = await developmentApi.loadData('appeals')
     expect(after.members[0]?.packages[0]).toMatchObject({ available: 6, total: 12 })
     expect(after.members[0]?.packages[1]).toMatchObject({ available: 6, total: 6 })
   })
@@ -262,7 +277,7 @@ describe('后台管理流程', () => {
 
     expect(screen.getByText('教练账号 · coach-user-linxiao')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '历史课程' })).toBeInTheDocument()
-    expect(screen.getByText('2026-07-26 · 陈澄 · 教练取消（已扣课）')).toBeInTheDocument()
+    expect(screen.getByText(/· 陈澄 · 教练取消（已扣课）/)).toBeInTheDocument()
   })
 
   it('预约详情显示课程反馈和关联申诉', async () => {

@@ -123,11 +123,11 @@ beforeEach(() => {
   fetchMock.mockImplementation(async (_url, init) => {
     const request = JSON.parse(String(init?.body)) as {
       action: string
-      payload: { resource?: string; operation?: string }
+      payload: { page?: string; resource?: string; operation?: string }
     }
     const result =
-      request.action === 'adminCrud' && request.payload.resource === 'dashboard'
-        ? dashboard
+      request.action === 'adminPage'
+        ? { ...dashboard, bookings: [booking], appeals: [appeal] }
         : request.action === 'listBookings'
           ? [booking]
           : request.action === 'listAppeals'
@@ -158,20 +158,22 @@ describe('正式数据适配', () => {
     )
   })
 
-  it('并发请求都通过 HTTPS 接口发送', async () => {
+  it('每个后台页面只发送一个 HTTPS 请求', async () => {
     const api = createProductionApi('test-env')
 
-    await Promise.all([api.loadData(), api.loadData()])
+    await api.loadData('products')
 
-    expect(fetchMock).toHaveBeenCalledTimes(6)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledWith(
       'https://test-env.service.tcloudbase.com/gym-admin-api',
-      expect.any(Object),
+      expect.objectContaining({ body: expect.stringContaining('"action":"adminPage"') }),
     )
+    const request = JSON.parse(String(fetchMock.mock.lastCall?.[1]?.body))
+    expect(request.payload).toEqual({ page: 'products' })
   })
 
   it('把云端关联集合和分单位字段转换为后台视图模型', async () => {
-    const data = await createProductionApi('test-env').loadData()
+    const data = await createProductionApi('test-env').loadData('dashboard')
 
     expect(data.products[0]).toMatchObject({ price: 50, lessons: 10 })
     expect(data.members[0]?.packages[0]).toMatchObject({

@@ -17,6 +17,7 @@ export type SessionView =
 export interface MemberHomeView {
   authenticated: boolean
   user?: User
+  role?: UserRole
   products: PackageProduct[]
   coaches: Coach[]
   memberships: MembershipPackage[]
@@ -27,6 +28,9 @@ export interface CoachScheduleView {
   coach: Coach
   date: string
   slots: CoachScheduleSlot[]
+  authenticated: boolean
+  user?: User
+  memberships: MembershipPackage[]
 }
 
 export type LessonView = Lesson & {
@@ -44,12 +48,14 @@ export type LessonView = Lesson & {
 }
 
 export interface MemberLessonsView {
+  authenticated: boolean
   upcoming: LessonView[]
   history: LessonView[]
 }
 
 export interface CoachDashboardView {
   coach: Coach
+  user: User
   lessons: LessonView[]
 }
 
@@ -173,7 +179,7 @@ class SessionAwareApi implements GymApi {
 
   async listMemberLessons(): Promise<MemberLessonsView> {
     if (isLocallyLoggedOut()) {
-      return { upcoming: [], history: [] }
+      return { authenticated: false, upcoming: [], history: [] }
     }
     return this.inner.listMemberLessons()
   }

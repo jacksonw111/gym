@@ -76,7 +76,11 @@ describe('mini program local logout', () => {
     expect(home.products.length).toBeGreaterThan(0)
     expect(home.coaches.length).toBeGreaterThan(0)
 
-    expect(await api.listMemberLessons()).toEqual({ upcoming: [], history: [] })
+    expect(await api.listMemberLessons()).toEqual({
+      authenticated: false,
+      upcoming: [],
+      history: [],
+    })
 
     clearLoggedOut()
     expect(isLocallyLoggedOut()).toBe(false)

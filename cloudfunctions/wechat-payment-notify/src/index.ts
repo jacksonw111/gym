@@ -1,8 +1,6 @@
 import { init } from '@cloudbase/node-sdk'
-import {
-  createPaymentNotificationHandler,
-  createRemoteWechatNotificationVerifier,
-} from '../../gym-api/src/payment'
+import { grantPaidOrder } from '../../gym-api/src/packages'
+import { createRemoteWechatNotificationVerifier } from '../../gym-api/src/payment'
 import { DomainError } from '../../gym-api/src/store'
 import { CloudBaseStore, type CloudDatabase } from '../../gym-api/src/store-cloudbase'
 
@@ -37,17 +35,18 @@ export const main = async (event: HttpEvent): Promise<HttpResponse> => {
   try {
     const app = init({ env: process.env.TCB_ENV })
     const store = new CloudBaseStore(app.database() as unknown as CloudDatabase)
-    await store.load()
-    const handler = createPaymentNotificationHandler(
-      store,
-      createRemoteWechatNotificationVerifier({ endpoint, apiToken }),
-    )
-    await handler({
+    const payment = await createRemoteWechatNotificationVerifier({ endpoint, apiToken }).verify({
       headers: event.headers ?? {},
       body: event.isBase64Encoded
         ? Buffer.from(event.body ?? '', 'base64').toString('utf8')
         : (event.body ?? ''),
     })
+    await store.prepare({
+      action: 'grantPaidOrder',
+      requestId: `payment-${payment.paymentId}`,
+      payload: { ...payment },
+    })
+    await grantPaidOrder(store, payment)
     return jsonResponse(200, { code: 'SUCCESS', message: '成功' })
   } catch (error) {
     console.error('wechat payment notification error', error)

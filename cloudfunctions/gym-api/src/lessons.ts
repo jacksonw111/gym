@@ -40,7 +40,7 @@ export const bookLesson = async (store: Store, input: BookLessonInput): Promise<
         item.startsAt === input.startsAt &&
         item.status === 'booked',
     )
-    if (occupied) throw new DomainError('该时段已被预约')
+    if (occupied || slot.occupiedLessonId) throw new DomainError('该时段已被预约')
     const membership = store.packages.find((item) => item.id === input.packageId)
     if (!membership || membership.memberId !== input.memberId) {
       throw new DomainError('课包不存在')
@@ -65,6 +65,7 @@ export const bookLesson = async (store: Store, input: BookLessonInput): Promise<
     membership.lockedLessons += 1
     assertPackageInvariant(membership)
     store.lessons.push(lesson)
+    slot.occupiedLessonId = lesson.id
     appendLedger(store, {
       packageId: membership.id,
       lessonId: lesson.id,
@@ -134,6 +135,13 @@ const consumeLockedLesson = (
   })
 }
 
+const clearSlotOccupancy = (store: Store, lesson: Lesson): void => {
+  const slot = store.schedules.find(
+    (item) => item.coachId === lesson.coachId && item.startsAt === lesson.startsAt,
+  )
+  if (slot?.occupiedLessonId === lesson.id) delete slot.occupiedLessonId
+}
+
 export const cancelLessonByMember = async (
   store: Store,
   memberId: string,
@@ -147,6 +155,7 @@ export const cancelLessonByMember = async (
       throw new DomainError('开课不足两小时不能自行取消')
     }
     releaseLockedLesson(store, lesson, membership, now, memberId)
+    clearSlotOccupancy(store, lesson)
     lesson.status = 'member_cancelled'
     return lesson
   })
@@ -169,6 +178,7 @@ export const cancelLessonByCoach = async (
       releaseLockedLesson(store, lesson, membership, now, coachId)
       lesson.status = 'coach_cancelled_released'
     }
+    clearSlotOccupancy(store, lesson)
     return lesson
   })
 
@@ -195,6 +205,7 @@ export const completeLesson = async (store: Store, input: CompleteLessonInput): 
     }
 
     consumeLockedLesson(store, lesson, membership, input.now, input.actor.id)
+    clearSlotOccupancy(store, lesson)
     lesson.status = 'completed'
     lesson.completionSource = input.actor.kind
     lesson.consumedAt = input.now

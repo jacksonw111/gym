@@ -80,6 +80,19 @@ interface BootstrapData {
   orders?: BootstrapOrder[]
 }
 
+interface CoachScheduleResponse {
+  context: BootstrapData
+  slots: RemoteScheduleSlot[]
+}
+
+type BootstrapView =
+  | 'session'
+  | 'memberHome'
+  | 'memberLessons'
+  | 'lessonDetail'
+  | 'coachDashboard'
+  | 'purchase'
+
 interface WechatAdapter {
   cloud: {
     callFunction(input: { name: string; data: ApiRequest<unknown> }): Promise<{ result?: unknown }>
@@ -111,7 +124,7 @@ export class CloudApi implements GymApi {
   constructor(private readonly testPaymentEnabled = false) {}
 
   async getSession(): Promise<SessionView> {
-    const data = await this.bootstrap()
+    const data = await this.bootstrap(undefined, 'session')
     if (!data.authenticated || !data.profile) return { authenticated: false }
     const role = data.activeRole ?? data.profile.roles[0]
     if (!role) throw new Error('当前账号没有可用身份')
@@ -129,7 +142,7 @@ export class CloudApi implements GymApi {
       },
       input.requestId,
     )
-    const data = await this.bootstrap(input.requestId)
+    const data = await this.bootstrap(input.requestId, 'session')
     const profile = this.requireProfile(data)
     return {
       authenticated: true,
@@ -139,13 +152,13 @@ export class CloudApi implements GymApi {
   }
 
   async switchRole(role: UserRole): Promise<SessionView> {
-    const current = await this.bootstrap()
+    const current = await this.bootstrap(undefined, 'session')
     const profile = this.requireProfile(current)
     if (!profile.roles.includes(role)) {
       throw new Error('当前账号没有该身份')
     }
     this.activeRole = role
-    const confirmed = await this.bootstrap()
+    const confirmed = await this.bootstrap(undefined, 'session')
     const confirmedProfile = this.requireProfile(confirmed)
     return {
       authenticated: true,
@@ -155,10 +168,11 @@ export class CloudApi implements GymApi {
   }
 
   async getMemberHome(): Promise<MemberHomeView> {
-    const data = await this.bootstrap()
+    const data = await this.bootstrap(undefined, 'memberHome')
     return {
       authenticated: data.authenticated,
       user: data.profile ?? undefined,
+      role: data.activeRole ?? undefined,
       products: data.packages,
       coaches: data.coaches,
       memberships: data.memberships,
@@ -214,7 +228,9 @@ export class CloudApi implements GymApi {
   }
 
   async queryPurchase(input: QueryPurchaseInput): Promise<PurchaseResult> {
-    const refreshed = await this.bootstrap(input.requestId)
+    const refreshed = await this.bootstrap(input.requestId, 'purchase', {
+      orderId: input.orderId,
+    })
     const order = refreshed.orders?.find((candidate) => candidate.id === input.orderId)
     if (order?.status !== 'paid' || !order.membershipId) {
       return { status: 'pending', orderId: input.orderId, requestId: input.requestId }
@@ -229,13 +245,18 @@ export class CloudApi implements GymApi {
   }
 
   async getCoachSchedule(coachId: string, date: string): Promise<CoachScheduleView> {
-    const [data, remoteSlots] = await Promise.all([
-      this.bootstrap(),
-      this.call<RemoteScheduleSlot[], { coachId: string; date: string; includeClosed: boolean }>(
-        'getSchedule',
-        { coachId, date, includeClosed: true },
-      ),
-    ])
+    const result = await this.call<
+      CoachScheduleResponse,
+      { coachId: string; date: string; includeClosed: boolean; activeRole?: UserRole }
+    >('getCoachScheduleView', {
+      coachId,
+      date,
+      includeClosed: true,
+      ...(this.activeRole ? { activeRole: this.activeRole } : {}),
+    })
+    const data = result.context
+    const activeRole = data.activeRole ?? data.roles?.[0] ?? data.profile?.roles[0] ?? null
+    if (activeRole) this.activeRole = activeRole
     const coach = data.coaches.find((candidate) => candidate.id === coachId)
     if (!coach) {
       throw new Error('教练不存在')
@@ -243,7 +264,10 @@ export class CloudApi implements GymApi {
     return {
       coach,
       date,
-      slots: mergeRemoteSchedule(date, remoteSlots, data.lessons, coachId),
+      slots: mergeRemoteSchedule(date, result.slots, data.lessons, coachId),
+      authenticated: data.authenticated,
+      user: data.profile ?? undefined,
+      memberships: data.memberships,
     }
   }
 
@@ -260,12 +284,16 @@ export class CloudApi implements GymApi {
   }
 
   async listMemberLessons(): Promise<MemberLessonsView> {
-    const data = await this.bootstrap()
-    const profile = this.requireProfile(data)
+    const data = await this.bootstrap(undefined, 'memberLessons')
+    if (!data.authenticated || !data.profile) {
+      return { authenticated: false, upcoming: [], history: [] }
+    }
+    const profile = data.profile
     const views = data.lessons
       .filter((lesson) => lesson.memberId === profile.id)
       .map((lesson) => this.toLessonView(data, lesson))
     return {
+      authenticated: true,
       upcoming: sortCoachLessons(views.filter((lesson) => lesson.status === 'booked')),
       history: [...views.filter((lesson) => lesson.status !== 'booked')].sort(
         (left, right) => Date.parse(right.startsAt) - Date.parse(left.startsAt),
@@ -274,7 +302,7 @@ export class CloudApi implements GymApi {
   }
 
   async getLesson(lessonId: string): Promise<LessonView> {
-    const data = await this.bootstrap()
+    const data = await this.bootstrap(undefined, 'lessonDetail', { lessonId })
     const lesson = data.lessons.find((candidate) => candidate.id === lessonId)
     if (!lesson) {
       throw new Error('课程不存在')
@@ -315,7 +343,7 @@ export class CloudApi implements GymApi {
   }
 
   async getCoachDashboard(date: string): Promise<CoachDashboardView> {
-    const data = await this.bootstrap()
+    const data = await this.bootstrap(undefined, 'coachDashboard', { date })
     const profile = this.requireProfile(data)
     const coach = data.coaches.find((candidate) => candidate.userId === profile.id)
     if (!coach) {
@@ -326,17 +354,33 @@ export class CloudApi implements GymApi {
         (lesson) => lesson.coachId === coach.id && formatShanghaiDate(lesson.startsAt) === date,
       )
       .map((lesson) => this.toLessonView(data, lesson))
-    return { coach, lessons: sortCoachLessons(lessons) }
+    return { coach, user: profile, lessons: sortCoachLessons(lessons) }
   }
 
   async getOwnCoachSchedule(date: string): Promise<CoachScheduleView> {
-    const data = await this.bootstrap()
+    const result = await this.call<
+      CoachScheduleResponse,
+      { date: string; includeClosed: boolean; activeRole?: UserRole }
+    >('getOwnCoachScheduleView', {
+      date,
+      includeClosed: true,
+      ...(this.activeRole ? { activeRole: this.activeRole } : {}),
+    })
+    const data = result.context
     const profile = this.requireProfile(data)
     const coach = data.coaches.find((candidate) => candidate.userId === profile.id)
     if (!coach) {
       throw new Error('当前账号不是教练')
     }
-    return this.getCoachSchedule(coach.id, date)
+    this.activeRole = data.activeRole ?? 'coach'
+    return {
+      coach,
+      date,
+      slots: mergeRemoteSchedule(date, result.slots, data.lessons, coach.id),
+      authenticated: true,
+      user: profile,
+      memberships: data.memberships,
+    }
   }
 
   async setCoachDayAvailability(input: SetDayAvailabilityInput) {
@@ -393,10 +437,27 @@ export class CloudApi implements GymApi {
     return this.call('completeLesson', { lessonId: input.lessonId }, input.requestId)
   }
 
-  private async bootstrap(requestId?: string): Promise<BootstrapData> {
-    const data = await this.call<BootstrapData, { activeRole?: UserRole }>(
+  private async bootstrap(
+    requestId: string | undefined,
+    view: BootstrapView,
+    context: { lessonId?: string; date?: string; orderId?: string } = {},
+  ): Promise<BootstrapData> {
+    const data = await this.call<
+      BootstrapData,
+      {
+        view: BootstrapView
+        activeRole?: UserRole
+        lessonId?: string
+        date?: string
+        orderId?: string
+      }
+    >(
       'bootstrap',
-      this.activeRole ? { activeRole: this.activeRole } : {},
+      {
+        view,
+        ...context,
+        ...(this.activeRole ? { activeRole: this.activeRole } : {}),
+      },
       requestId,
     )
     const activeRole = data.activeRole ?? data.roles?.[0] ?? data.profile?.roles[0] ?? null

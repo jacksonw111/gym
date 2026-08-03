@@ -42,9 +42,5 @@
   "adminSessions": {
     "read": false,
     "write": false
-  },
-  "system_locks": {
-    "read": false,
-    "write": false
   }
 }

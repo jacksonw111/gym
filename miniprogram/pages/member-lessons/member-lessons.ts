@@ -39,12 +39,11 @@ Page({
   async load() {
     this.setData({ loading: true, error: '' })
     try {
-      const session = await getApi().getSession()
-      if (!session.authenticated) {
+      const result = await getApi().listMemberLessons()
+      if (!result.authenticated) {
         this.setData({ loading: false, authenticated: false, upcoming: [], historyGroups: [] })
         return
       }
-      const result = await getApi().listMemberLessons()
       const groups = new Map<string, LessonRow[]>()
       for (const lesson of result.history.map(toRow)) {
         const startsAt = getShanghaiDateParts(lesson.startsAt)

@@ -75,15 +75,11 @@ Page({
     this.setData({ loading: true, error: '' })
     try {
       const api = getApi()
-      const [session, home, schedule] = await Promise.all([
-        api.getSession(),
-        api.getMemberHome(),
-        api.getCoachSchedule(this.data.coachId, date),
-      ])
+      const schedule = await api.getCoachSchedule(this.data.coachId, date)
       if (!scheduleRequests.isCurrent(request, this.data.selectedDate)) {
         return
       }
-      const memberships = availablePackagesForCoach(home.memberships, this.data.coachId).map(
+      const memberships = availablePackagesForCoach(schedule.memberships, this.data.coachId).map(
         (membership) => ({
           ...membership,
           validity: membershipValidityLabel(membership),
@@ -98,7 +94,7 @@ Page({
         slots: schedule.slots.map((slot) => ({
           ...buildPublicSlot({
             ...slot,
-            viewerMemberId: session.authenticated ? session.user.id : '',
+            viewerMemberId: schedule.authenticated ? (schedule.user?.id ?? '') : '',
           }),
           time: slot.label,
         })),

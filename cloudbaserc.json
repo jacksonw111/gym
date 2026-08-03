@@ -28,7 +28,8 @@
                       "direction": 1
                     }
                   ],
-                  "unique": true
+                  "unique": true,
+                  "sparse": true
                 }
               ]
             },
@@ -43,15 +44,65 @@
                       "direction": 1
                     }
                   ],
-                  "unique": true
+                  "unique": true,
+                  "sparse": true
+                },
+                {
+                  "name": "coach_status",
+                  "keys": [
+                    {
+                      "name": "status",
+                      "direction": 1
+                    }
+                  ]
                 }
               ]
             },
             {
-              "collectionName": "products"
+              "collectionName": "products",
+              "createIndexes": [
+                {
+                  "name": "product_status",
+                  "keys": [
+                    {
+                      "name": "status",
+                      "direction": 1
+                    }
+                  ]
+                },
+                {
+                  "name": "product_coach",
+                  "keys": [
+                    {
+                      "name": "coachId",
+                      "direction": 1
+                    }
+                  ]
+                }
+              ]
             },
             {
-              "collectionName": "memberships"
+              "collectionName": "memberships",
+              "createIndexes": [
+                {
+                  "name": "membership_member",
+                  "keys": [
+                    {
+                      "name": "memberId",
+                      "direction": 1
+                    }
+                  ]
+                },
+                {
+                  "name": "membership_coach",
+                  "keys": [
+                    {
+                      "name": "coachId",
+                      "direction": 1
+                    }
+                  ]
+                }
+              ]
             },
             {
               "collectionName": "orders",
@@ -65,6 +116,29 @@
                     }
                   ],
                   "unique": true
+                },
+                {
+                  "name": "order_member_request_unique",
+                  "keys": [
+                    {
+                      "name": "memberId",
+                      "direction": 1
+                    },
+                    {
+                      "name": "requestId",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                },
+                {
+                  "name": "order_status",
+                  "keys": [
+                    {
+                      "name": "status",
+                      "direction": 1
+                    }
+                  ]
                 }
               ]
             },
@@ -116,6 +190,29 @@
                       "direction": 1
                     }
                   ]
+                },
+                {
+                  "name": "member_request_unique",
+                  "keys": [
+                    {
+                      "name": "memberId",
+                      "direction": 1
+                    },
+                    {
+                      "name": "requestId",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                },
+                {
+                  "name": "lesson_status",
+                  "keys": [
+                    {
+                      "name": "status",
+                      "direction": 1
+                    }
+                  ]
                 }
               ]
             },
@@ -130,20 +227,71 @@
                       "direction": 1
                     }
                   ]
+                },
+                {
+                  "name": "appeal_lesson_unique",
+                  "keys": [
+                    {
+                      "name": "lessonId",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                },
+                {
+                  "name": "appeal_member",
+                  "keys": [
+                    {
+                      "name": "memberId",
+                      "direction": 1
+                    }
+                  ]
                 }
               ]
             },
             {
-              "collectionName": "ledger"
+              "collectionName": "ledger",
+              "createIndexes": [
+                {
+                  "name": "ledger_package",
+                  "keys": [
+                    {
+                      "name": "packageId",
+                      "direction": 1
+                    }
+                  ]
+                }
+              ]
             },
             {
-              "collectionName": "admins"
+              "collectionName": "admins",
+              "createIndexes": [
+                {
+                  "name": "admin_username_unique",
+                  "keys": [
+                    {
+                      "name": "username",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                }
+              ]
             },
             {
-              "collectionName": "adminSessions"
-            },
-            {
-              "collectionName": "system_locks"
+              "collectionName": "adminSessions",
+              "createIndexes": [
+                {
+                  "name": "admin_session_token_unique",
+                  "keys": [
+                    {
+                      "name": "token",
+                      "direction": 1
+                    }
+                  ],
+                  "unique": true
+                }
+              ]
             }
           ]
         }

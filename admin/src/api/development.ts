@@ -13,6 +13,36 @@ import type {
 const DATA_KEY = 'purui-admin-data'
 const SESSION_KEY = 'purui-admin-session'
 
+const dayFormatter = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+const formatParts = (parts: Intl.DateTimeFormatPart[]) =>
+  Object.fromEntries(parts.map((part) => [part.type, part.value]))
+
+const day = (offset: number): string => {
+  const values = formatParts(dayFormatter.formatToParts(new Date(Date.now() + offset * 86_400_000)))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+const dayAt = (offset: number, time: string): string => `${day(offset).slice(5)} ${time}`
+
+const dayStamp = (offset: number, time: string): string => `${day(offset)} ${time}`
+
+const nowStamp = (): string => {
+  const values = formatParts(dayFormatter.formatToParts(new Date()))
+  const clock = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+  return `${values.year}-${values.month}-${values.day} ${clock.format(new Date())}`
+}
+
 const seedData = (): AdminData => ({
   coaches: [
     {
@@ -23,12 +53,12 @@ const seedData = (): AdminData => ({
       specialty: '力量训练 · 运动表现',
       status: 'active',
       schedule: [
-        { date: '2026-07-30', time: '10:00–11:00', member: '陈澄', course: '私教进阶课' },
-        { date: '2026-07-30', time: '16:00–17:00', member: '沈舟', course: '基础力量课' },
+        { date: day(0), time: '10:00–11:00', member: '陈澄', course: '私教进阶课' },
+        { date: day(0), time: '16:00–17:00', member: '沈舟', course: '基础力量课' },
       ],
       history: [
-        { date: '2026-07-30', member: '陈澄', status: '已完成' },
-        { date: '2026-07-26', member: '陈澄', status: '教练取消（已扣课）' },
+        { date: day(0), member: '陈澄', status: '已完成' },
+        { date: day(-4), member: '陈澄', status: '教练取消（已扣课）' },
       ],
     },
     {
@@ -38,8 +68,8 @@ const seedData = (): AdminData => ({
       phone: '138 0013 8002',
       specialty: '体态改善 · 康复训练',
       status: 'active',
-      schedule: [{ date: '2026-07-31', time: '09:00–10:00', member: '许妍', course: '体态评估课' }],
-      history: [{ date: '2026-07-19', member: '许妍', status: '已完成' }],
+      schedule: [{ date: day(1), time: '09:00–10:00', member: '许妍', course: '体态评估课' }],
+      history: [{ date: day(-11), member: '许妍', status: '已完成' }],
     },
     {
       id: 'coach-jiangyu',
@@ -74,8 +104,8 @@ const seedData = (): AdminData => ({
         },
       ],
       courseHistory: [
-        { date: '2026-07-29', course: '私教进阶课', coach: '林骁', status: '已完成' },
-        { date: '2026-07-26', course: '私教进阶课', coach: '林骁', status: '教练取消（扣课）' },
+        { date: day(-1), course: '私教进阶课', coach: '林骁', status: '已完成' },
+        { date: day(-4), course: '私教进阶课', coach: '林骁', status: '教练取消（扣课）' },
       ],
       orders: [
         {
@@ -107,9 +137,7 @@ const seedData = (): AdminData => ({
           changes: [],
         },
       ],
-      courseHistory: [
-        { date: '2026-07-23', course: '基础力量课', coach: '林骁', status: '已完成' },
-      ],
+      courseHistory: [{ date: day(-7), course: '基础力量课', coach: '林骁', status: '已完成' }],
       orders: [
         {
           id: 'O-260508',
@@ -140,9 +168,7 @@ const seedData = (): AdminData => ({
           changes: [],
         },
       ],
-      courseHistory: [
-        { date: '2026-07-19', course: '体态改善课', coach: '周岚', status: '已完成' },
-      ],
+      courseHistory: [{ date: day(-11), course: '体态改善课', coach: '周岚', status: '已完成' }],
       orders: [
         {
           id: 'O-260703',
@@ -191,7 +217,7 @@ const seedData = (): AdminData => ({
   bookings: [
     {
       id: 'lesson-0730-completed',
-      date: '2026-07-30',
+      date: day(0),
       time: '10:00–11:00',
       coachId: 'coach-linxiao',
       coachName: '林骁',
@@ -201,20 +227,20 @@ const seedData = (): AdminData => ({
       packageName: '12 节私教进阶包',
       source: '会员确认完成',
       timeline: [
-        { at: '07-28 11:20', label: '预约成功', source: '会员端' },
-        { at: '07-30 11:05', label: '课程完成', source: '会员确认' },
+        { at: dayAt(-2, '11:20'), label: '预约成功', source: '会员端' },
+        { at: dayAt(0, '11:05'), label: '课程完成', source: '会员确认' },
       ],
       ledger: [
         {
           id: 'change-completed-lock',
-          at: '07-28 11:20',
+          at: dayAt(-2, '11:20'),
           operation: '锁定课时',
           delta: -1,
           description: '可用 -1 / 锁定 +1',
         },
         {
           id: 'change-completed-consume',
-          at: '07-30 11:05',
+          at: dayAt(0, '11:05'),
           operation: '核销课时',
           delta: 0,
           description: '锁定 -1 / 已用 +1',
@@ -223,12 +249,12 @@ const seedData = (): AdminData => ({
       feedback: {
         rating: 5,
         comment: '动作纠正很细致。',
-        submittedAt: '2026-07-30 11:12',
+        submittedAt: dayStamp(0, '11:12'),
       },
     },
     {
       id: 'lesson-0730-booked',
-      date: '2026-07-30',
+      date: day(0),
       time: '16:00–17:00',
       coachId: 'coach-linxiao',
       coachName: '林骁',
@@ -237,11 +263,11 @@ const seedData = (): AdminData => ({
       status: 'booked',
       packageName: '8 节私教基础包',
       source: '会员预约',
-      timeline: [{ at: '07-29 09:40', label: '预约成功', source: '会员端' }],
+      timeline: [{ at: dayAt(-1, '09:40'), label: '预约成功', source: '会员端' }],
       ledger: [
         {
           id: 'change-booked-lock',
-          at: '07-29 09:40',
+          at: dayAt(-1, '09:40'),
           operation: '锁定课时',
           delta: -1,
           description: '可用 -1 / 锁定 +1',
@@ -250,7 +276,7 @@ const seedData = (): AdminData => ({
     },
     {
       id: 'lesson-0731-booked',
-      date: '2026-07-31',
+      date: day(1),
       time: '09:00–10:00',
       coachId: 'coach-zhoulan',
       coachName: '周岚',
@@ -259,11 +285,11 @@ const seedData = (): AdminData => ({
       status: 'booked',
       packageName: '6 节体态改善包',
       source: '会员预约',
-      timeline: [{ at: '07-29 14:10', label: '预约成功', source: '会员端' }],
+      timeline: [{ at: dayAt(-1, '14:10'), label: '预约成功', source: '会员端' }],
       ledger: [
         {
           id: 'change-posture-lock',
-          at: '07-29 14:10',
+          at: dayAt(-1, '14:10'),
           operation: '锁定课时',
           delta: -1,
           description: '可用 -1 / 锁定 +1',
@@ -272,7 +298,7 @@ const seedData = (): AdminData => ({
     },
     {
       id: 'lesson-appealed',
-      date: '2026-07-26',
+      date: day(-4),
       time: '15:00–16:00',
       coachId: 'coach-linxiao',
       coachName: '林骁',
@@ -282,20 +308,20 @@ const seedData = (): AdminData => ({
       packageName: '12 节私教进阶包',
       source: '教练取消 · 已扣课',
       timeline: [
-        { at: '07-24 18:20', label: '预约成功', source: '会员端' },
-        { at: '07-26 13:12', label: '教练取消并扣课', source: '教练端' },
+        { at: dayAt(-6, '18:20'), label: '预约成功', source: '会员端' },
+        { at: dayAt(-4, '13:12'), label: '教练取消并扣课', source: '教练端' },
       ],
       ledger: [
         {
           id: 'change-appealed-lock',
-          at: '07-24 18:20',
+          at: dayAt(-6, '18:20'),
           operation: '锁定课时',
           delta: -1,
           description: '可用 -1 / 锁定 +1',
         },
         {
           id: 'change-appealed-consume',
-          at: '07-26 13:12',
+          at: dayAt(-4, '13:12'),
           operation: '核销课时',
           delta: 0,
           description: '锁定 -1 / 已用 +1',
@@ -310,24 +336,24 @@ const seedData = (): AdminData => ({
       memberId: 'member-chencheng',
       memberName: '陈澄',
       coachName: '林骁',
-      courseAt: '2026-07-26 15:00–16:00',
+      courseAt: `${day(-4)} 15:00–16:00`,
       packageId: 'package-chen-advanced',
       reason: '教练临时取消，但系统仍扣除了课时。',
       note: '当天 13:12 收到取消消息，没有实际到馆上课。',
       status: 'pending',
-      createdAt: '2026-07-30 09:18',
+      createdAt: dayStamp(0, '09:18'),
       source: '教练取消 · 已扣课',
       balanceChanges: [
         {
           id: 'change-appealed-lock',
-          at: '07-24 18:20',
+          at: dayAt(-6, '18:20'),
           operation: '锁定课时',
           delta: -1,
           description: '可用 -1 / 锁定 +1',
         },
         {
           id: 'change-appealed-consume',
-          at: '07-26 13:12',
+          at: dayAt(-4, '13:12'),
           operation: '核销课时',
           delta: 0,
           description: '锁定 -1 / 已用 +1',
@@ -340,16 +366,16 @@ const seedData = (): AdminData => ({
       memberId: 'member-xuyan',
       memberName: '许妍',
       coachName: '周岚',
-      courseAt: '2026-07-20 09:00–10:00',
+      courseAt: `${day(-10)} 09:00–10:00`,
       packageId: 'package-xu-posture',
       reason: '对课程状态有疑问。',
       note: '已与教练确认。',
       status: 'rejected',
-      createdAt: '2026-07-22 11:04',
+      createdAt: dayStamp(-8, '11:04'),
       source: '会员确认完成',
       balanceChanges: [],
       decisionNote: '核对签到与双方记录，课程已正常完成。',
-      handledAt: '2026-07-22 14:30',
+      handledAt: dayStamp(-8, '14:30'),
     },
   ],
   sales: [
@@ -358,14 +384,14 @@ const seedData = (): AdminData => ({
       memberName: '许妍',
       productName: '6 节体态改善包',
       amount: 2880,
-      paidAt: '2026-07-29 18:42',
+      paidAt: dayStamp(-1, '18:42'),
     },
     {
       id: 'sale-2',
       memberName: '沈舟',
       productName: '8 节私教基础包',
       amount: 3280,
-      paidAt: '2026-07-28 12:16',
+      paidAt: dayStamp(-2, '12:16'),
     },
   ],
 })
@@ -409,7 +435,7 @@ const updateAppeal = (
 ): void => {
   appeal.status = decision === 'approve' ? 'approved' : 'rejected'
   appeal.decisionNote = decisionNote
-  appeal.handledAt = '2026-07-30 14:30'
+  appeal.handledAt = nowStamp()
 }
 
 export const developmentApi: AdminApi = {
@@ -423,7 +449,7 @@ export const developmentApi: AdminApi = {
   async logout() {
     sessionStorage.removeItem(SESSION_KEY)
   },
-  async loadData() {
+  async loadData(_page) {
     return clone(readData())
   },
   async saveCoach(input: CoachInput) {
@@ -531,7 +557,7 @@ export const developmentApi: AdminApi = {
       lockedDelta: 0,
       usedDelta: 0,
       totalDelta: delta,
-      createdAt: '2026-07-30 14:30',
+      createdAt: nowStamp(),
       note,
     })
     writeData(data)
@@ -584,7 +610,7 @@ export const developmentApi: AdminApi = {
         lockedDelta: 0,
         usedDelta: -1,
         totalDelta: 0,
-        createdAt: '2026-07-30 14:30',
+        createdAt: nowStamp(),
         note: decisionNote,
       }
       membership.changes.push(refund)

@@ -1,5 +1,6 @@
 export type CoachStatus = 'active' | 'inactive'
 export type ProductStatus = 'published' | 'unpublished'
+export type AdminPage = 'dashboard' | 'coaches' | 'members' | 'products' | 'bookings' | 'appeals'
 export type AppealStatus = 'pending' | 'approved' | 'rejected'
 export type LessonStatus =
   | 'booked'
@@ -147,7 +148,7 @@ export interface AdminApi {
   getSession(): boolean
   login(username: string, password: string): Promise<void>
   logout(): Promise<void>
-  loadData(): Promise<AdminData>
+  loadData(page: AdminPage): Promise<AdminData>
   saveCoach(input: CoachInput): Promise<{ id: string }>
   setCoachStatus(id: string, status: CoachStatus): Promise<void>
   leaveCoach(id: string, transferCoachId?: string): Promise<CoachLeaveResult>

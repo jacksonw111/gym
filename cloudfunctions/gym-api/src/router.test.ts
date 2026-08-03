@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createCloudHandler, createRouter } from './index'
+import { type ApiRequest, createCloudHandler, createRouter } from './index'
 import { createDevelopmentSeed } from './seed'
 import { MemoryStore } from './store'
 
@@ -221,6 +221,62 @@ describe('CloudBase action router', () => {
     ).toHaveLength(11)
   })
 
+  it('教练课程表页面一次返回身份、业务上下文和时段', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+
+    const response = await router({
+      action: 'getCoachScheduleView',
+      requestId: 'coach-schedule-view',
+      identity: { openId: 'dev-member-openid' },
+      payload: { coachId: 'coach-1', date: '2026-08-01', includeClosed: true },
+    })
+
+    expect(response).toMatchObject({
+      ok: true,
+      data: {
+        context: {
+          authenticated: true,
+          profile: { id: 'member-1' },
+          coaches: [{ id: 'coach-1' }],
+        },
+        slots: expect.arrayContaining([
+          expect.objectContaining({ coachId: 'coach-1', open: true }),
+        ]),
+      },
+    })
+  })
+
+  it('教练自己的排班页面一次返回教练身份和时段', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+
+    const response = await router({
+      action: 'getOwnCoachScheduleView',
+      requestId: 'own-coach-schedule-view',
+      identity: { openId: 'dev-coach-openid' },
+      payload: { date: '2026-08-01', includeClosed: true, activeRole: 'coach' },
+    })
+
+    expect(response).toMatchObject({
+      ok: true,
+      data: {
+        context: {
+          activeRole: 'coach',
+          profile: { id: 'coach-user-1' },
+          coaches: [{ id: 'coach-1' }],
+        },
+        slots: expect.any(Array),
+      },
+    })
+  })
+
   it('云入口忽略客户端伪造 identity，只采用服务端解析结果', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const handler = createCloudHandler(
@@ -239,6 +295,34 @@ describe('CloudBase action router', () => {
     expect(response).toMatchObject({
       ok: true,
       data: { profile: { id: 'member-1' } },
+    })
+  })
+
+  it('云入口用服务端身份准备当前请求的数据范围', async () => {
+    const store = new MemoryStore(createDevelopmentSeed()) as MemoryStore & {
+      prepare: (request: ApiRequest & { payload: Record<string, unknown> }) => Promise<void>
+    }
+    store.prepare = vi.fn(
+      async (_request: ApiRequest & { payload: Record<string, unknown> }) => undefined,
+    )
+    const handler = createCloudHandler(
+      store,
+      { developmentPaymentsEnabled: true, production: false },
+      () => ({ openId: 'dev-member-openid' }),
+    )
+
+    await handler({
+      action: 'listPackages',
+      requestId: 'prepare-server-identity',
+      payload: {},
+      identity: { openId: 'forged-openid' },
+    })
+
+    expect(store.prepare).toHaveBeenCalledWith({
+      action: 'listPackages',
+      requestId: 'prepare-server-identity',
+      payload: {},
+      identity: { openId: 'dev-member-openid' },
     })
   })
 
@@ -660,6 +744,67 @@ describe('CloudBase action router', () => {
     expect(listed.find((item) => item.id === productId)?.status).toBe('published')
   })
 
+  it('管理员可以上架缺少状态字段的旧课包', async () => {
+    const seed = createDevelopmentSeed()
+    const legacyProduct = seed.products?.[0] as unknown as Record<string, unknown>
+    delete legacyProduct.status
+    const store = new MemoryStore(seed)
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const login = await router({
+      action: 'adminLogin',
+      requestId: 'admin-login-legacy-package',
+      payload: { username: 'admin', password: 'dev-admin-password' },
+    })
+    if (!login.ok) throw new Error('管理员登录失败')
+
+    const response = await router({
+      action: 'adminCrud',
+      requestId: 'admin-publish-legacy-package',
+      authToken: (login.data as { token: string }).token,
+      payload: {
+        resource: 'packages',
+        operation: 'setStatus',
+        data: { id: String(legacyProduct.id), status: 'published' },
+      },
+    })
+
+    expect(response).toMatchObject({ ok: true, data: { status: 'published' } })
+  })
+
+  it('管理员按当前页面获取数据', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const login = await router({
+      action: 'adminLogin',
+      requestId: 'admin-login-page',
+      payload: { username: 'admin', password: 'dev-admin-password' },
+    })
+    if (!login.ok) throw new Error('管理员登录失败')
+
+    const response = await router({
+      action: 'adminPage',
+      requestId: 'admin-products-page',
+      authToken: (login.data as { token: string }).token,
+      payload: { page: 'products' },
+    })
+
+    expect(response).toMatchObject({
+      ok: true,
+      data: {
+        packages: expect.any(Array),
+        coaches: expect.any(Array),
+        bookings: expect.any(Array),
+        appeals: expect.any(Array),
+      },
+    })
+  })
+
   it('管理员保存课包时可设置有效期，也可清空回到长期有效', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const router = createRouter(store, {
@@ -1003,11 +1148,11 @@ describe('CloudBase action router', () => {
     consoleError.mockRestore()
   })
 
-  it('数据库加载失败也由云入口返回通用中文错误', async () => {
+  it('数据库请求准备失败也由云入口返回通用中文错误', async () => {
     const store = new MemoryStore(createDevelopmentSeed()) as MemoryStore & {
-      load: () => Promise<void>
+      prepare: () => Promise<void>
     }
-    store.load = async () => {
+    store.prepare = async () => {
       throw new Error('database credential leaked')
     }
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)

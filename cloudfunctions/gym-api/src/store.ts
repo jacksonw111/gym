@@ -74,6 +74,7 @@ export interface ScheduleSlot {
   startsAt: string
   endsAt: string
   open: boolean
+  occupiedLessonId?: string
 }
 
 export type LessonStatus =

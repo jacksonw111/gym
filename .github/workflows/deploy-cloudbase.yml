@@ -60,6 +60,11 @@ jobs:
           TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
         run: tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY"
 
+      - name: Deploy database indexes
+        env:
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: node scripts/deploy-cloudbase-database.mjs --env "$TCB_ENV_ID"
+
       - name: Update cloud function code
         env:
           TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}

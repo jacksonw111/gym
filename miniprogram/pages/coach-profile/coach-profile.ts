@@ -23,17 +23,13 @@ Page({
   async load() {
     this.setData({ loading: true, error: '' })
     try {
-      const [session, dashboard] = await Promise.all([
-        getApi().getSession(),
-        getApi().getCoachDashboard(today()),
-      ])
-      if (!session.authenticated) throw new Error('请先登录')
+      const dashboard = await getApi().getCoachDashboard(today())
       this.setData({
         loading: false,
         name: dashboard.coach.name,
         bio: dashboard.coach.bio ?? '',
         phone: dashboard.coach.phone ?? '未填写',
-        dualRole: session.user.roles.includes('member'),
+        dualRole: dashboard.user.roles.includes('member'),
         todayLessons: dashboard.lessons.length,
       })
     } catch (error) {

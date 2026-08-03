@@ -81,6 +81,7 @@ export class DevelopmentApi implements GymApi {
     return {
       authenticated: true,
       user: state.user,
+      role: state.role,
       products: state.products.filter((product) => product.status === 'published'),
       coaches: state.coaches.filter((coach) => coach.status === 'active'),
       memberships: state.memberships,
@@ -171,7 +172,14 @@ export class DevelopmentApi implements GymApi {
         ...(lesson ? { lesson, locked: true, memberName: state.user.name } : {}),
       }
     })
-    return { coach, date, slots }
+    return {
+      coach,
+      date,
+      slots,
+      authenticated: true,
+      user: state.user,
+      memberships: state.memberships,
+    }
   }
 
   async bookLesson(input: BookLessonInput): Promise<Lesson> {
@@ -229,6 +237,7 @@ export class DevelopmentApi implements GymApi {
       .filter((lesson) => lesson.memberId === state.user.id)
       .map((lesson) => this.toLessonView(state, lesson))
     return {
+      authenticated: true,
       upcoming: sortCoachLessons(views.filter((lesson) => lesson.status === 'booked')),
       history: [...views.filter((lesson) => lesson.status !== 'booked')].sort(
         (left, right) => Date.parse(right.startsAt) - Date.parse(left.startsAt),
@@ -358,7 +367,7 @@ export class DevelopmentApi implements GymApi {
     const lessons = state.lessons
       .filter((lesson) => lesson.coachId === coach.id && datePart(lesson.startsAt) === date)
       .map((lesson) => this.toLessonView(state, lesson))
-    return { coach, lessons: sortCoachLessons(lessons) }
+    return { coach, user: state.user, lessons: sortCoachLessons(lessons) }
   }
 
   async getOwnCoachSchedule(date: string): Promise<CoachScheduleView> {

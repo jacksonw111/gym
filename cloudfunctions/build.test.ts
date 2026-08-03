@@ -7,6 +7,24 @@ const workspace = join(import.meta.dirname, '..')
 const functionNames = ['gym-api', 'auto-complete-lessons', 'wechat-payment-notify'] as const
 
 describe('CloudBase部署构建', () => {
+  it('生产云函数不再调用全量数据加载或全局数据库锁', () => {
+    const gymApi = readFileSync(join(workspace, 'cloudfunctions/gym-api/src/index.ts'), 'utf8')
+    const paymentNotify = readFileSync(
+      join(workspace, 'cloudfunctions/wechat-payment-notify/src/index.ts'),
+      'utf8',
+    )
+    const cloudStore = readFileSync(
+      join(workspace, 'cloudfunctions/gym-api/src/store-cloudbase.ts'),
+      'utf8',
+    )
+
+    expect(gymApi).not.toContain('store.load()')
+    expect(paymentNotify).not.toContain('store.load()')
+    expect(cloudStore).not.toContain('systemLocks')
+    expect(cloudStore).not.toContain('async load(): Promise<void>')
+    expect(cloudStore).not.toContain('loadFrom(')
+  })
+
   it('三个函数都构建为可由Node 18加载的独立dist入口', () => {
     try {
       for (const functionName of functionNames) {
@@ -69,12 +87,18 @@ describe('CloudBase部署构建', () => {
       'ledger',
       'admins',
       'adminSessions',
-      'system_locks',
     ]
     const cloudbase = JSON.parse(readFileSync(join(workspace, 'cloudbaserc.json'), 'utf8')) as {
       framework: {
         plugins: {
-          database: { inputs: { collections: Array<{ collectionName: string }> } }
+          database: {
+            inputs: {
+              collections: Array<{
+                collectionName: string
+                createIndexes?: Array<{ name: string }>
+              }>
+            }
+          }
           functions: {
             inputs: {
               functions: Array<{ name: string; config: { handler?: string } }>
@@ -99,6 +123,29 @@ describe('CloudBase部署构建', () => {
         .sort(),
     ).toEqual([...expectedCollections].sort())
     expect(Object.keys(rules).sort()).toEqual([...expectedCollections].sort())
+    const requiredIndexes: Record<string, string[]> = {
+      coaches: ['coach_user_unique', 'coach_status'],
+      products: ['product_status', 'product_coach'],
+      memberships: ['membership_member', 'membership_coach'],
+      orders: ['payment_id_unique', 'order_member_request_unique', 'order_status'],
+      schedules: ['coach_schedule_unique'],
+      lessons: ['coach_starts_unique', 'member_status', 'member_request_unique', 'lesson_status'],
+      appeals: ['appeal_status', 'appeal_lesson_unique', 'appeal_member'],
+      ledger: ['ledger_package'],
+      admins: ['admin_username_unique'],
+      adminSessions: ['admin_session_token_unique'],
+    }
+    const collectionConfigs = new Map(
+      cloudbase.framework.plugins.database.inputs.collections.map((item) => [
+        item.collectionName,
+        item,
+      ]),
+    )
+    for (const [collection, indexes] of Object.entries(requiredIndexes)) {
+      expect(collectionConfigs.get(collection)?.createIndexes?.map((item) => item.name)).toEqual(
+        expect.arrayContaining(indexes),
+      )
+    }
     expect(
       cloudbase.framework.plugins.functions.inputs.functions.map((item) => ({
         name: item.name,

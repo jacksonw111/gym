@@ -29,7 +29,20 @@ const baseLesson: Lesson = {
 }
 
 const createStore = (): MemoryStore =>
-  new MemoryStore({ packages: [basePackage], lessons: [baseLesson] })
+  new MemoryStore({
+    packages: [basePackage],
+    lessons: [baseLesson],
+    schedules: [
+      {
+        id: 'slot-1',
+        coachId: baseLesson.coachId,
+        startsAt: baseLesson.startsAt,
+        endsAt: baseLesson.endsAt,
+        open: true,
+        occupiedLessonId: baseLesson.id,
+      },
+    ],
+  })
 
 describe('取消课程', () => {
   it('会员恰好提前两小时可以取消并释放锁定课时', async () => {
@@ -82,6 +95,7 @@ describe('取消课程', () => {
       expect(lesson.status).toBe(status)
       expect(store.packages[0]).toMatchObject(balance)
       expect(store.ledger.at(-1)?.operation).toBe(operation)
+      expect(store.schedules[0]).not.toHaveProperty('occupiedLessonId')
     },
   )
 
@@ -114,6 +128,7 @@ describe('完成和反馈', () => {
       usedLessons: 1,
     })
     expect(store.ledger.at(-1)?.operation).toBe('consume')
+    expect(store.schedules[0]).not.toHaveProperty('occupiedLessonId')
   })
 
   it('系统仅在结束满24小时后自动完成', async () => {

@@ -50,8 +50,8 @@ Page({
     this.setData({ loading: true, error: '' })
     try {
       const api = getApi()
-      const [session, result] = await Promise.all([api.getSession(), api.getMemberHome()])
-      if (session.authenticated && session.role === 'coach') {
+      const result = await api.getMemberHome()
+      if (result.authenticated && result.role === 'coach') {
         wx.redirectTo({ url: '/pages/coach-dashboard/coach-dashboard' })
         return
       }

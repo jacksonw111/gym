@@ -7,6 +7,40 @@ const money = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value)
 
+const shanghai = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Shanghai',
+  weekday: 'long',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
+const shanghaiDate = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+const todayParts = (now: Date) => {
+  const values = Object.fromEntries(
+    shanghai.formatToParts(now).map((part) => [part.type, part.value]),
+  )
+  return {
+    weekday: values.weekday?.toUpperCase() ?? '',
+    day: values.day ?? '',
+    month: values.month?.toUpperCase() ?? '',
+    year: values.year ?? '',
+  }
+}
+
+const todayStamp = (now: Date): string => {
+  const values = Object.fromEntries(
+    shanghaiDate.formatToParts(now).map((part) => [part.type, part.value]),
+  )
+  return `${values.year}-${values.month}-${values.day}`
+}
+
 export function DashboardPage({
   data,
   navigate,
@@ -14,7 +48,10 @@ export function DashboardPage({
   data: AdminData
   navigate: (page: 'bookings' | 'appeals') => void
 }) {
-  const todayBookings = data.bookings.filter((booking) => booking.date === '2026-07-30')
+  const now = new Date()
+  const today = todayStamp(now)
+  const { weekday, day, month, year } = todayParts(now)
+  const todayBookings = data.bookings.filter((booking) => booking.date === today)
   const pendingAppeals = data.appeals.filter((appeal) => appeal.status === 'pending')
   const anomalies = data.bookings.filter((booking) =>
     ['coach_cancelled_consumed', 'coach_cancelled_released'].includes(booking.status),
@@ -25,7 +62,9 @@ export function DashboardPage({
     <section>
       <header className="page-heading dashboard-heading">
         <div>
-          <p className="eyebrow">THURSDAY · 30 JUL</p>
+          <p className="eyebrow">
+            {weekday} · {day} {month}
+          </p>
           <h1>
             今天，场馆有 <em>{todayBookings.length}</em> 节课
           </h1>
@@ -33,9 +72,11 @@ export function DashboardPage({
             需要优先看的是 {pendingAppeals.length} 条申诉与 {anomalies.length} 条异常记录。
           </p>
         </div>
-        <time className="date-stamp" dateTime="2026-07-30">
-          <strong>30</strong>
-          <span>JUL / 2026</span>
+        <time className="date-stamp" dateTime={today}>
+          <strong>{day}</strong>
+          <span>
+            {month} / {year}
+          </span>
         </time>
       </header>
 
