@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import type { AdminApi, AdminData } from './api'
 import { adminApi } from './api'
 import { AdminIcon, type AdminIconName } from './components/admin-icon'
+import { BeanEaterTransition, ButtonLoading } from './components/loading'
 import { AppealsPage } from './pages/appeals'
 import { BookingsPage } from './pages/bookings'
 import { CoachesPage } from './pages/coaches'
@@ -85,8 +86,13 @@ function LoginGate({ api, onLogin }: { api: AdminApi; onLogin: () => void }) {
                 {error}
               </p>
             )}
-            <button className="primary-button wide" type="submit" disabled={submitting}>
-              {submitting ? '正在验证…' : '登录后台'}
+            <button
+              className="primary-button wide"
+              type="submit"
+              disabled={submitting}
+              aria-busy={submitting}
+            >
+              {submitting ? <ButtonLoading label="登录中…" /> : '登录后台'}
             </button>
           </form>
           {import.meta.env.DEV && (
@@ -107,6 +113,8 @@ function AdminShell({
   onNavigate,
   onRefresh,
   onLogout,
+  transitionLabel,
+  loggingOut,
 }: {
   api: AdminApi
   data: AdminData
@@ -114,6 +122,8 @@ function AdminShell({
   onNavigate: (page: Page) => void
   onRefresh: () => Promise<void>
   onLogout: () => void
+  transitionLabel: string | null
+  loggingOut: boolean
 }) {
   const activePage = pages.find((item) => item.id === page)
   const pendingAppeals = data.appeals.filter((appeal) => appeal.status === 'pending').length
@@ -160,8 +170,14 @@ function AdminShell({
         <div className="sidebar-foot">
           <span>今日营业</span>
           <strong>07:00—22:30</strong>
-          <button type="button" className="text-button inverse" onClick={onLogout}>
-            退出登录
+          <button
+            type="button"
+            className="text-button inverse"
+            onClick={onLogout}
+            disabled={loggingOut}
+            aria-busy={loggingOut}
+          >
+            {loggingOut ? <ButtonLoading label="退出中…" /> : '退出登录'}
           </button>
         </div>
       </aside>
@@ -181,6 +197,7 @@ function AdminShell({
           {pageContent}
         </main>
       </div>
+      {transitionLabel && <BeanEaterTransition label={transitionLabel} />}
     </div>
   )
 }
@@ -190,13 +207,19 @@ export function App({ api = adminApi }: { api?: AdminApi }) {
   const [data, setData] = useState<AdminData | null>(null)
   const [page, setPage] = useState<Page>('dashboard')
   const [error, setError] = useState('')
+  const [transition, setTransition] = useState<{ page: Page; label: string } | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   const refresh = useCallback(async () => {
     setError('')
+    setRefreshing(true)
     try {
       setData(await api.loadData())
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '数据加载失败')
+    } finally {
+      setRefreshing(false)
     }
   }, [api])
 
@@ -205,10 +228,25 @@ export function App({ api = adminApi }: { api?: AdminApi }) {
   }, [authenticated, refresh])
 
   const logout = async () => {
-    await api.logout()
-    setData(null)
-    setPage('dashboard')
-    setAuthenticated(false)
+    setLoggingOut(true)
+    try {
+      await api.logout()
+      setData(null)
+      setPage('dashboard')
+      setAuthenticated(false)
+    } finally {
+      setLoggingOut(false)
+    }
+  }
+
+  const navigate = (nextPage: Page) => {
+    if (nextPage === page || transition) return
+    const label = pages.find((item) => item.id === nextPage)?.label ?? ''
+    setPage(nextPage)
+    setTransition({ page: nextPage, label })
+    window.setTimeout(() => {
+      setTransition(null)
+    }, 400)
   }
 
   if (!authenticated) {
@@ -221,8 +259,14 @@ export function App({ api = adminApi }: { api?: AdminApi }) {
         <p className="eyebrow">数据连接中断</p>
         <h1>后台暂时没有拿到数据</h1>
         <p role="alert">{error}</p>
-        <button type="button" className="primary-button" onClick={() => void refresh()}>
-          重新加载
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => void refresh()}
+          disabled={refreshing}
+          aria-busy={refreshing}
+        >
+          {refreshing ? <ButtonLoading label="刷新中…" /> : '重新加载'}
         </button>
       </main>
     )
@@ -242,9 +286,11 @@ export function App({ api = adminApi }: { api?: AdminApi }) {
       api={api}
       data={data}
       page={page}
-      onNavigate={setPage}
+      onNavigate={navigate}
       onRefresh={refresh}
       onLogout={() => void logout()}
+      transitionLabel={transition?.label ?? null}
+      loggingOut={loggingOut}
     />
   )
 }

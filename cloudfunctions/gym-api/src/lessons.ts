@@ -4,6 +4,7 @@ import {
   assertPackageInvariant,
   DomainError,
   type Feedback,
+  isMembershipExpired,
   type Lesson,
   type Store,
 } from './store'
@@ -46,6 +47,9 @@ export const bookLesson = async (store: Store, input: BookLessonInput): Promise<
     }
     if (membership.coachId !== input.coachId) throw new DomainError('课包与教练不匹配')
     if (membership.availableLessons < 1) throw new DomainError('可用课时不足')
+    if (isMembershipExpired(membership, new Date(input.now))) {
+      throw new DomainError('课包已过期，无法预约')
+    }
 
     const lesson: Lesson = {
       id: store.nextId('lesson'),

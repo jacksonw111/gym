@@ -8,27 +8,121 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24rpx;
+  gap: 10rpx;
 }
 
-.tab-bar__spinner {
-  width: 64rpx;
-  height: 64rpx;
-  border: 6rpx solid var(--color-line);
-  border-top-color: var(--color-primary);
+.bean-eater {
+  width: 200rpx;
+  height: 200rpx;
+  overflow: hidden;
+}
+
+.bean-eater__stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.bean-eater__mouths {
+  transform: translateX(-15rpx);
+}
+
+.bean-eater__mouth {
+  position: absolute;
+  top: 40rpx;
+  left: 40rpx;
+  width: 120rpx;
+  height: 60rpx;
+  border-radius: 120rpx 120rpx 0 0;
+  background: var(--color-ink);
+  transform-origin: 60rpx 60rpx;
+  animation: bean-eater-mouth-top 1s linear infinite;
+}
+
+.bean-eater__mouth:nth-child(2) {
+  animation-name: bean-eater-mouth-bottom;
+}
+
+.bean-eater__mouth:nth-child(3) {
+  transform: rotate(-90deg);
+  animation: none;
+}
+
+.bean-eater__pellet {
+  position: absolute;
+  top: 92rpx;
+  left: -8rpx;
+  width: 16rpx;
+  height: 16rpx;
   border-radius: 50%;
-  animation: tab-bar-spin 800ms linear infinite;
+  background: var(--color-primary);
+  animation: bean-eater-pellet 1s linear infinite;
+}
+
+.bean-eater__pellet:nth-child(1) {
+  animation-delay: -0.67s;
+}
+
+.bean-eater__pellet:nth-child(2) {
+  background: var(--color-signal);
+  animation-delay: -0.33s;
+}
+
+.bean-eater__pellet:nth-child(3) {
+  animation-delay: 0s;
+}
+
+.tab-bar__mask-kicker {
+  color: var(--color-primary);
+  font-size: 20rpx;
+  font-weight: 800;
+  letter-spacing: 5rpx;
 }
 
 .tab-bar__mask-text {
   font-size: 26rpx;
   font-weight: 800;
   letter-spacing: 2rpx;
+  line-height: 1.4;
 }
 
-@keyframes tab-bar-spin {
-  to {
-    transform: rotate(360deg);
+@keyframes bean-eater-mouth-top {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-45deg);
+  }
+}
+
+@keyframes bean-eater-mouth-bottom {
+  0%,
+  100% {
+    transform: rotate(180deg);
+  }
+
+  50% {
+    transform: rotate(225deg);
+  }
+}
+
+@keyframes bean-eater-pellet {
+  0% {
+    opacity: 0;
+    transform: translateX(190rpx);
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(70rpx);
   }
 }
 

@@ -1,7 +1,12 @@
 import { loginPageUrl } from '../../models/auth'
+import { membershipValidityLabel } from '../../models/member'
 import { getApi } from '../../services/api'
 import { markLoggedOut } from '../../services/session'
 import type { MembershipPackage } from '../../shared/contracts'
+
+interface PackageRow extends MembershipPackage {
+  validity: string
+}
 
 Page({
   data: {
@@ -12,7 +17,7 @@ Page({
     name: '',
     phone: '',
     dualRole: false,
-    memberships: [] as MembershipPackage[],
+    memberships: [] as PackageRow[],
     totalAvailable: 0,
     switching: false,
   },
@@ -33,7 +38,10 @@ Page({
         name: user?.name ?? '',
         phone: user?.phone ?? '未填写',
         dualRole: user?.roles.includes('coach') ?? false,
-        memberships: result.memberships,
+        memberships: result.memberships.map((membership) => ({
+          ...membership,
+          validity: membershipValidityLabel(membership, new Date()),
+        })),
         totalAvailable: result.memberships.reduce(
           (total, membership) => total + membership.availableLessons,
           0,

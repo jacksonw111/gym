@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { AdminApi, AdminData, Appeal } from '../api'
+import { ButtonLoading } from '../components/loading'
 
 const appealCode = (appeal: Appeal) =>
   appeal.id === 'appeal-240730' ? 'A-240730' : appeal.id.replace('appeal-', 'A-')
@@ -28,6 +29,7 @@ export function AppealsPage({
   const [decisionNote, setDecisionNote] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState<'approve' | 'reject' | null>(null)
   const selected = appeals.find((appeal) => appeal.id === selectedId)
   const membership = selected
     ? data.members
@@ -42,10 +44,15 @@ export function AppealsPage({
       setError('请填写处理说明')
       return
     }
-    await api.decideAppeal(selected.id, decision, decisionNote.trim())
-    await refresh()
-    setDecisionNote('')
-    setMessage(decision === 'approve' ? '申诉已通过，1 节课已退回会员余额' : '申诉已驳回')
+    setBusy(decision)
+    try {
+      await api.decideAppeal(selected.id, decision, decisionNote.trim())
+      await refresh()
+      setDecisionNote('')
+      setMessage(decision === 'approve' ? '申诉已通过，1 节课已退回会员余额' : '申诉已驳回')
+    } finally {
+      setBusy(null)
+    }
   }
 
   return (
@@ -169,15 +176,19 @@ export function AppealsPage({
                       type="button"
                       className="secondary-button"
                       onClick={() => void decide('reject')}
+                      disabled={busy !== null}
+                      aria-busy={busy === 'reject'}
                     >
-                      驳回申诉
+                      {busy === 'reject' ? <ButtonLoading label="驳回中…" /> : '驳回申诉'}
                     </button>
                     <button
                       type="button"
                       className="primary-button"
                       onClick={() => void decide('approve')}
+                      disabled={busy !== null}
+                      aria-busy={busy === 'approve'}
                     >
-                      通过并退回 1 节
+                      {busy === 'approve' ? <ButtonLoading label="处理中…" /> : '通过并退回 1 节'}
                     </button>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import type { AdminApi, AdminData, Coach, CoachInput } from '../api'
+import { ButtonLoading } from '../components/loading'
 
 const blankCoach: CoachInput = { name: '', phone: '', specialty: '' }
 
@@ -16,7 +17,10 @@ export function CoachesPage({
   const [selectedId, setSelectedId] = useState(data.coaches[0]?.id ?? '')
   const [editing, setEditing] = useState<CoachInput | null>(null)
   const [confirming, setConfirming] = useState<Coach | null>(null)
+  const [transferCoachId, setTransferCoachId] = useState('')
   const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState('')
   const selected = data.coaches.find((coach) => coach.id === selectedId)
   const filtered = useMemo(
     () =>
@@ -28,32 +32,85 @@ export function CoachesPage({
     [data.coaches, search],
   )
 
+  const isExpired = (membership: { expiresAt?: string }): boolean =>
+    Boolean(membership.expiresAt && new Date(membership.expiresAt).getTime() < Date.now())
+
+  const transferableCount = (coachId: string): number =>
+    data.members.reduce(
+      (count, member) =>
+        count +
+        member.packages.filter(
+          (membership) =>
+            membership.coachId === coachId &&
+            membership.available + membership.locked > 0 &&
+            !isExpired(membership),
+        ).length,
+      0,
+    )
+
+  const otherActiveCoaches = data.coaches.filter(
+    (coach) => coach.status === 'active' && coach.id !== confirming?.id,
+  )
+
   const save = async (event: FormEvent) => {
     event.preventDefault()
     if (!editing?.name || !editing.phone || !editing.specialty) return
-    const saved = await api.saveCoach(editing)
-    await refresh()
-    setSelectedId(saved.id)
-    setEditing(null)
-    setMessage('教练资料已保存')
-  }
-
-  const toggle = async (coach: Coach) => {
-    if (coach.status === 'active') {
-      setConfirming(coach)
-      return
+    setBusy('save')
+    try {
+      const saved = await api.saveCoach(editing)
+      await refresh()
+      setSelectedId(saved.id)
+      setEditing(null)
+      setMessage('教练资料已保存')
+    } finally {
+      setBusy('')
     }
-    await api.setCoachStatus(coach.id, 'active')
-    await refresh()
-    setMessage(`${coach.name}已启用`)
   }
 
-  const deactivate = async () => {
+  const requestLeave = (coach: Coach) => {
+    setTransferCoachId('')
+    setError('')
+    setConfirming(coach)
+  }
+
+  const reactivate = async (coach: Coach) => {
+    setBusy(`status-${coach.id}`)
+    setError('')
+    try {
+      await api.setCoachStatus(coach.id, 'active')
+      await refresh()
+      setMessage(`${coach.name}已恢复在岗`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '恢复在岗失败')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const leave = async () => {
     if (!confirming) return
-    await api.setCoachStatus(confirming.id, 'inactive')
-    await refresh()
-    setMessage(`${confirming.name}已停用，历史课程已保留`)
-    setConfirming(null)
+    const transferable = transferableCount(confirming.id)
+    if (transferable > 0 && !transferCoachId) return
+    setBusy('deactivate')
+    setError('')
+    try {
+      const result = await api.leaveCoach(
+        confirming.id,
+        transferable > 0 ? transferCoachId : undefined,
+      )
+      await refresh()
+      setMessage(
+        result.transferredMemberships > 0
+          ? `${confirming.name}已离职：${result.transferredMemberships} 份有效课包及 ${result.transferredLessons} 个待上课预约已转移给 ${result.transferCoachName}，${result.unpublishedProducts} 个课包已下架。已购会员可继续预约训练。`
+          : `${confirming.name}已离职，${result.unpublishedProducts} 个课包已下架，历史课程已保留。`,
+      )
+      setConfirming(null)
+      setTransferCoachId('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '离职处理失败')
+    } finally {
+      setBusy('')
+    }
   }
 
   return (
@@ -62,7 +119,9 @@ export function CoachesPage({
         <div>
           <p className="eyebrow">COACH ROSTER</p>
           <h1>教练管理</h1>
-          <p>维护教练资料、在岗状态与近期排班。停用不会清除历史课程。</p>
+          <p>
+            维护教练资料与在岗状态。离职前先转移其有效会员课包并下架课包，已购会员的预约不受影响。
+          </p>
         </div>
         <button className="primary-button" type="button" onClick={() => setEditing(blankCoach)}>
           ＋ 新增教练
@@ -73,18 +132,57 @@ export function CoachesPage({
           {message}
         </p>
       )}
+      {error && (
+        <p className="feedback error" role="alert">
+          {error}
+        </p>
+      )}
       {confirming && (
-        <section className="inline-confirm" aria-label="停用确认">
+        <section className="inline-confirm" aria-label="离职确认">
           <div>
-            <strong>确认停用{confirming.name}？</strong>
-            <p>该教练将不能接受新预约，已有排班与课程历史会继续保留。</p>
+            <strong>确认{confirming.name}离职？</strong>
+            {transferableCount(confirming.id) > 0 ? (
+              <>
+                <p>
+                  该教练仍有 {transferableCount(confirming.id)}{' '}
+                  份有效会员课包。离职时这些课包及其待上课预约将转移给接收教练，随后下架其课包商品；已购会员仍可继续预约训练。
+                </p>
+                <label>
+                  接收教练
+                  <select
+                    value={transferCoachId}
+                    onChange={(event) => setTransferCoachId(event.target.value)}
+                  >
+                    <option value="">请选择接收教练</option>
+                    {otherActiveCoaches.map((coach) => (
+                      <option key={coach.id} value={coach.id}>
+                        {coach.name} · {coach.specialty}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <p>该教练没有待转移的有效课包，离职后将下架其课包商品并停止接收新预约。</p>
+            )}
           </div>
           <div>
-            <button type="button" className="secondary-button" onClick={() => setConfirming(null)}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setConfirming(null)}
+              disabled={Boolean(busy)}
+            >
               返回
             </button>
-            <button type="button" className="danger-button" onClick={() => void deactivate()}>
-              确认停用
+            <button
+              type="button"
+              className="danger-button"
+              onClick={() => void leave()}
+              disabled={Boolean(busy) || (transferableCount(confirming.id) > 0 && !transferCoachId)}
+              aria-busy={busy === 'deactivate'}
+            >
+              {busy === 'deactivate' ? <ButtonLoading label="离职处理中…" /> : '确认离职'}
             </button>
           </div>
         </section>
@@ -139,11 +237,21 @@ export function CoachesPage({
             />
           </label>
           <div className="button-row">
-            <button type="button" className="secondary-button" onClick={() => setEditing(null)}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setEditing(null)}
+              disabled={Boolean(busy)}
+            >
               取消
             </button>
-            <button type="submit" className="primary-button">
-              保存
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={Boolean(busy)}
+              aria-busy={busy === 'save'}
+            >
+              {busy === 'save' ? <ButtonLoading label="保存中…" /> : '保存'}
             </button>
           </div>
         </form>
@@ -187,7 +295,7 @@ export function CoachesPage({
                   <td>{coach.specialty}</td>
                   <td>
                     <span className={`status ${coach.status}`}>
-                      {coach.status === 'active' ? '在岗' : '已停用'}
+                      {coach.status === 'active' ? '在岗' : '已离职'}
                     </span>
                   </td>
                   <td>
@@ -196,15 +304,26 @@ export function CoachesPage({
                         className="text-button"
                         type="button"
                         onClick={() => setEditing({ ...coach })}
+                        disabled={Boolean(busy)}
                       >
                         编辑
                       </button>
                       <button
                         className="text-button"
                         type="button"
-                        onClick={() => void toggle(coach)}
+                        onClick={() =>
+                          coach.status === 'active' ? requestLeave(coach) : void reactivate(coach)
+                        }
+                        disabled={Boolean(busy)}
+                        aria-busy={busy === `status-${coach.id}`}
                       >
-                        {coach.status === 'active' ? '停用' : '启用'}
+                        {busy === `status-${coach.id}` ? (
+                          <ButtonLoading label="恢复中…" />
+                        ) : coach.status === 'active' ? (
+                          '离职'
+                        ) : (
+                          '恢复在岗'
+                        )}
                       </button>
                     </div>
                   </td>
@@ -221,7 +340,7 @@ export function CoachesPage({
               <div className="detail-title">
                 <h2>{selected.name}</h2>
                 <span className={`status ${selected.status}`}>
-                  {selected.status === 'active' ? '在岗' : '已停用'}
+                  {selected.status === 'active' ? '在岗' : '已离职'}
                 </span>
               </div>
               <dl className="fact-list">

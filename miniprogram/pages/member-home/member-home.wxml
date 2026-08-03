@@ -58,6 +58,7 @@
           <view class="membership__main">
             <text class="membership__name">{{item.productName}}</text>
             <text class="muted">绑定 {{item.coachName}} 教练 · {{item.price}}</text>
+            <text class="muted">有效期 {{item.validity}}</text>
           </view>
           <view class="membership__balance">
             <text>{{item.availableLessons}}</text>
@@ -90,7 +91,7 @@
     <view wx:for="{{products}}" wx:key="id" class="product">
       <view>
         <view class="product__name">{{item.name}}</view>
-        <text class="muted">{{item.lessonCount}} 节 · 永久有效</text>
+        <text class="muted">{{item.lessonCount}} 节 · {{item.validity}}</text>
       </view>
       <text class="product__price">{{item.price}}</text>
     </view>

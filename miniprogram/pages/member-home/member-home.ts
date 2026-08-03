@@ -1,4 +1,9 @@
-import { buildMemberHomeModel, formatPrice } from '../../models/member'
+import {
+  buildMemberHomeModel,
+  formatPrice,
+  membershipValidityLabel,
+  productValidityLabel,
+} from '../../models/member'
 import { formatShanghaiHour, getShanghaiDateParts } from '../../models/time-display'
 import { getApi } from '../../services/api'
 import type { Coach, Lesson, MembershipPackage, PackageProduct } from '../../shared/contracts'
@@ -6,10 +11,12 @@ import type { Coach, Lesson, MembershipPackage, PackageProduct } from '../../sha
 interface PackageRow extends MembershipPackage {
   coachName: string
   price: string
+  validity: string
 }
 
 interface ProductRow extends PackageProduct {
   price: string
+  validity: string
 }
 
 interface CoachRow extends Coach {
@@ -58,6 +65,7 @@ Page({
         products: result.products.map((product) => ({
           ...product,
           price: formatPrice(product.priceCents),
+          validity: productValidityLabel(product),
         })),
         coaches: result.coaches.map((coach) => ({
           ...coach,
@@ -66,6 +74,7 @@ Page({
         memberships: model.packages.map((membership) => ({
           ...membership,
           coachName: coachName(membership.coachId),
+          validity: membershipValidityLabel(membership, new Date()),
         })),
         totalAvailable: model.totalAvailableLessons,
         nextLesson: model.nextLesson

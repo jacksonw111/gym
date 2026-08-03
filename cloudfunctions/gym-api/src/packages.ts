@@ -44,6 +44,7 @@ export const createOrder = async (store: Store, input: CreateOrderInput): Promis
         name: product.name,
         priceCents: product.priceCents,
         lessonCount: product.lessonCount,
+        ...(product.validDays ? { validDays: product.validDays } : {}),
       },
       status: 'pending',
       createdAt: input.createdAt,
@@ -51,6 +52,15 @@ export const createOrder = async (store: Store, input: CreateOrderInput): Promis
     store.orders.push(order)
     return order
   })
+
+const membershipExpiresAt = (
+  productSnapshot: Order['productSnapshot'],
+  paidAt: string,
+): string | undefined => {
+  const validDays = productSnapshot.validDays
+  if (!validDays) return undefined
+  return new Date(Date.parse(paidAt) + validDays * 24 * 60 * 60 * 1000).toISOString()
+}
 
 export interface GrantPaidOrderInput {
   orderId: string
@@ -88,6 +98,9 @@ export const grantPaidOrder = async (
       lockedLessons: 0,
       usedLessons: 0,
       purchasedAt: input.paidAt,
+      ...(membershipExpiresAt(order.productSnapshot, input.paidAt)
+        ? { expiresAt: membershipExpiresAt(order.productSnapshot, input.paidAt) }
+        : {}),
     }
     assertPackageInvariant(membership)
     store.packages.push(membership)

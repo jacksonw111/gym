@@ -43,6 +43,7 @@
       <view>
         <view class="package-row__name">{{item.productName}}</view>
         <text class="muted">可用 {{item.availableLessons}} · 锁定 {{item.lockedLessons}} · 已用 {{item.usedLessons}}</text>
+        <text class="muted">有效期 {{item.validity}}</text>
       </view>
       <text class="package-row__total">{{item.totalLessons}} 节</text>
     </view>

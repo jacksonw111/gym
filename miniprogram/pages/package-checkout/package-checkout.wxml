@@ -34,7 +34,7 @@
       >
         <view>
           <view class="choice__title">{{item.name}}</view>
-          <text class="muted">{{item.lessonCount}} 节 · 永久有效</text>
+          <text class="muted">{{item.lessonCount}} 节 · {{item.validity}}</text>
         </view>
         <text class="choice__price">{{item.price}}</text>
       </view>

@@ -56,6 +56,24 @@ describe('development mini program API', () => {
     ).toHaveLength(1)
   })
 
+  it('snapshots the product validity period onto purchased memberships', async () => {
+    const purchase = await api.purchasePackage({
+      productId: 'product-strength-12',
+      coachId: 'coach-lin',
+      requestId: 'buy-with-validity',
+    })
+    if (purchase.status !== 'paid') throw new Error('expected immediate development payment')
+    expect(purchase.membership.expiresAt).toBe('2026-10-30T00:00:00.000Z')
+
+    const unlimited = await api.purchasePackage({
+      productId: 'product-foundation-8',
+      coachId: 'coach-lin',
+      requestId: 'buy-unlimited',
+    })
+    if (unlimited.status !== 'paid') throw new Error('expected immediate development payment')
+    expect(unlimited.membership.expiresAt).toBeUndefined()
+  })
+
   it('books a coach slot by locking one lesson and cancellation releases it', async () => {
     const before = await api.getMemberHome()
     const membership = before.memberships.find((item) => item.coachId === 'coach-lin')

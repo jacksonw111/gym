@@ -2,7 +2,7 @@
 
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { developmentApi, resetDevelopmentData } from './api/development'
 import { App } from './app'
 import './test/setup'
@@ -48,6 +48,32 @@ describe('管理员登录', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('账号或密码不正确')
   })
+
+  it('登录提交时显示基础 loading 和明确文案', async () => {
+    let finishLogin: (() => void) | undefined
+    const api = {
+      ...developmentApi,
+      login: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            finishLogin = resolve
+          }),
+      ),
+    }
+    const user = userEvent.setup()
+    render(<App api={api} />)
+
+    await user.type(screen.getByLabelText('管理员账号'), 'admin')
+    await user.type(screen.getByLabelText('密码'), 'Purui2026!')
+    await user.click(screen.getByRole('button', { name: '登录后台' }))
+
+    const button = screen.getByRole('button', { name: '登录中…' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(button.querySelector('.button-spinner')).toBeInTheDocument()
+
+    finishLogin?.()
+  })
 })
 
 describe('后台管理流程', () => {
@@ -56,21 +82,23 @@ describe('后台管理流程', () => {
 
     await user.click(screen.getByRole('button', { name: '会员' }))
 
-    expect(screen.getByRole('heading', { name: '会员管理' })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: '正在前往会员' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '会员管理' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('搜索会员姓名或手机号')).toBeInTheDocument()
   })
 
-  it('确认后停用教练且保留教练记录', async () => {
+  it('确认后离职教练：先转移有效课包并下架课包商品', async () => {
     const user = await login()
     await user.click(screen.getByRole('button', { name: '教练' }))
 
     const coachRow = screen.getByRole('row', { name: /林骁/ })
-    await user.click(within(coachRow).getByRole('button', { name: '停用' }))
-    expect(screen.getByText('确认停用林骁？')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '确认停用' }))
+    await user.click(within(coachRow).getByRole('button', { name: '离职' }))
+    expect(screen.getByText('确认林骁离职？')).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('接收教练'), 'coach-zhoulan')
+    await user.click(screen.getByRole('button', { name: '确认离职' }))
 
-    expect(await within(coachRow).findByText('已停用')).toBeInTheDocument()
-    expect(within(coachRow).getByRole('button', { name: '启用' })).toBeInTheDocument()
+    expect(await within(coachRow).findByText('已离职')).toBeInTheDocument()
+    expect(within(coachRow).getByRole('button', { name: '恢复在岗' })).toBeInTheDocument()
   })
 
   it('新增教练无需绑定小程序账号', async () => {
@@ -86,6 +114,36 @@ describe('后台管理流程', () => {
 
     expect(await screen.findByRole('row', { name: /陈教练/ })).toBeInTheDocument()
     expect(screen.getByText('未绑定小程序账号')).toBeInTheDocument()
+  })
+
+  it('保存教练时显示基础 loading 和明确文案', async () => {
+    let finishSave: ((value: { id: string }) => void) | undefined
+    const api = {
+      ...developmentApi,
+      getSession: () => true,
+      saveCoach: vi.fn(
+        () =>
+          new Promise<{ id: string }>((resolve) => {
+            finishSave = resolve
+          }),
+      ),
+    }
+    const user = userEvent.setup()
+    render(<App api={api} />)
+    await screen.findByRole('navigation', { name: '后台导航' })
+    await user.click(screen.getByRole('button', { name: '教练' }))
+    await user.click(screen.getByRole('button', { name: '＋ 新增教练' }))
+    await user.type(screen.getByLabelText('姓名'), '陈教练')
+    await user.type(screen.getByLabelText('手机号'), '18610682231')
+    await user.type(screen.getByLabelText('专长'), '体能训练')
+    await user.click(screen.getByRole('button', { name: '保存' }))
+
+    const button = screen.getByRole('button', { name: '保存中…' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(button.querySelector('.button-spinner')).toBeInTheDocument()
+
+    finishSave?.({ id: 'coach-new' })
   })
 
   it('人工调课要求非零整数且原因必填', async () => {

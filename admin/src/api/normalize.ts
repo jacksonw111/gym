@@ -123,6 +123,7 @@ export const toCloudProductInput = (input: ProductInput): RecordValue => ({
   priceCents: Math.round(input.price * 100),
   lessonCount: input.lessons,
   coachId: input.coachId,
+  ...(input.validDays ? { validDays: input.validDays } : {}),
 })
 
 export const normalizeAdminData = (
@@ -227,6 +228,7 @@ export const normalizeAdminData = (
     status: text(product.status, 'unpublished') as Product['status'],
     soldCount: orders.filter((order) => order.productId === product.id && order.status === 'paid')
       .length,
+    ...(number(product.validDays) ? { validDays: number(product.validDays) } : {}),
   }))
 
   const members: Member[] = rawMembers.map((member) => {
@@ -249,6 +251,7 @@ export const normalizeAdminData = (
           used: number(membership.usedLessons),
           total: number(membership.totalLessons),
           purchasedAt: date(membership.purchasedAt),
+          ...(text(membership.expiresAt) ? { expiresAt: date(membership.expiresAt) } : {}),
           changes: rawLedger
             .filter((entry) => entry.packageId === membership.id)
             .map(normalizeChange),

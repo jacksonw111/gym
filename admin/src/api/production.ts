@@ -1,5 +1,12 @@
 import { normalizeAdminData, toCloudProductInput } from './normalize'
-import type { AdminApi, CoachInput, CoachStatus, ProductInput, ProductStatus } from './types'
+import type {
+  AdminApi,
+  CoachInput,
+  CoachLeaveResult,
+  CoachStatus,
+  ProductInput,
+  ProductStatus,
+} from './types'
 
 interface CloudResponse<T> {
   ok: boolean
@@ -61,6 +68,11 @@ export const createProductionApi = (envId: string): AdminApi => {
         resource: 'coaches',
         operation: 'setStatus',
         data: { id, status },
+      }),
+    leaveCoach: (id: string, transferCoachId?: string) =>
+      call<CoachLeaveResult>('coachLeave', {
+        coachId: id,
+        ...(transferCoachId ? { transferCoachId } : {}),
       }),
     adjustPackage: (packageId, delta, note) => call('adjustBalance', { packageId, delta, note }),
     saveProduct: (input: ProductInput) =>

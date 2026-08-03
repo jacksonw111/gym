@@ -124,6 +124,13 @@ export class DevelopmentApi implements GymApi {
       lockedLessons: 0,
       usedLessons: 0,
       purchasedAt: this.now().toISOString(),
+      ...(product.validDays
+        ? {
+            expiresAt: new Date(
+              this.now().getTime() + product.validDays * 24 * 60 * 60 * 1000,
+            ).toISOString(),
+          }
+        : {}),
     }
     this.store.update((draft) => {
       draft.memberships.push(membership)

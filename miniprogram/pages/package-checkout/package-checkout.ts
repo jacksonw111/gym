@@ -1,11 +1,12 @@
 import { getEnvironment } from '../../config/env'
 import { loginPageUrl } from '../../models/auth'
-import { formatPrice } from '../../models/member'
+import { formatPrice, productValidityLabel } from '../../models/member'
 import { createRequestId, getApi } from '../../services/api'
 import type { Coach, PackageProduct } from '../../shared/contracts'
 
 interface ProductOption extends PackageProduct {
   price: string
+  validity: string
 }
 
 interface CoachOption extends Coach {
@@ -40,6 +41,7 @@ Page({
         products: result.products.map((product) => ({
           ...product,
           price: formatPrice(product.priceCents),
+          validity: productValidityLabel(product),
         })),
         coaches: result.coaches
           .filter((coach) => coach.status === 'active')

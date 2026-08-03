@@ -1,6 +1,20 @@
 <view wx:if="{{switching}}" class="tab-bar__mask">
-  <view class="tab-bar__spinner" aria-hidden="true" />
-  <text class="tab-bar__mask-text">正在切换</text>
+  <view class="bean-eater" aria-hidden="true">
+    <view class="bean-eater__stage">
+      <view class="bean-eater__pellets">
+        <view class="bean-eater__pellet" />
+        <view class="bean-eater__pellet" />
+        <view class="bean-eater__pellet" />
+      </view>
+      <view class="bean-eater__mouths">
+        <view class="bean-eater__mouth" />
+        <view class="bean-eater__mouth" />
+        <view class="bean-eater__mouth" />
+      </view>
+    </view>
+  </view>
+  <text class="tab-bar__mask-kicker">PURUI / MOVE</text>
+  <text class="tab-bar__mask-text">正在前往{{switchingLabel}}</text>
 </view>
 <view class="tab-bar">
   <view
@@ -8,6 +22,7 @@
     wx:key="key"
     class="tab-bar__item {{current === item.key ? 'tab-bar__item--active' : ''}}"
     data-url="{{item.url}}"
+    data-label="{{item.label}}"
     bindtap="navigate"
     hover-class="tab-bar__item--pressed"
     hover-stay-time="80"

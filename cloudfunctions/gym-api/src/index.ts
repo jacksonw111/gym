@@ -3,6 +3,7 @@ import { init } from '@cloudbase/node-sdk'
 import * as wxCloud from 'wx-server-sdk'
 import { createAppeal, decideAppeal } from './appeals'
 import type { Actor } from './auth'
+import { leaveCoach } from './coaches'
 import {
   autoCompleteDueLessons,
   bookLesson,
@@ -215,6 +216,20 @@ const mutateAdminResource = (
       if (!store.coaches.some((item) => item.id === coachId)) {
         throw new DomainError('绑定的教练不存在')
       }
+      const validDays = typeof value.validDays === 'number' ? value.validDays : undefined
+      if (validDays !== undefined && (!Number.isInteger(validDays) || validDays < 1)) {
+        throw new DomainError('课包有效期必须为正整数天数')
+      }
+      const merged = {
+        ...collection[existingIndex],
+        ...cloneJson(value),
+        id,
+      } as unknown as Record<string, unknown>
+      if (validDays === undefined) delete merged.validDays
+      else merged.validDays = validDays
+      if (existingIndex < 0) collection.push(merged as unknown as Product)
+      else collection[existingIndex] = merged as unknown as Product
+      return merged
     }
     const record = { ...cloneJson(value), id } as unknown as User | Coach | Product
     if (existingIndex < 0) collection.push(record)
@@ -704,6 +719,20 @@ export const createRouter = (
               note: requiredString(payload, 'note'),
               requestId: request.requestId,
               adminId: admin.id,
+              now,
+            }),
+          }
+        }
+        case 'coachLeave': {
+          requireAdmin(store, request, now)
+          return {
+            ok: true,
+            data: await leaveCoach(store, {
+              coachId: requiredString(payload, 'coachId'),
+              transferCoachId:
+                typeof payload.transferCoachId === 'string' && payload.transferCoachId
+                  ? payload.transferCoachId
+                  : undefined,
               now,
             }),
           }

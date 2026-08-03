@@ -81,7 +81,7 @@
     bindtap="chooseMembership"
   >
     <text>{{item.productName}}</text>
-    <text>{{item.availableLessons}} 节可用 · {{selectedMembershipId === item.id ? '已选' : '选择'}}</text>
+    <text>{{item.availableLessons}} 节可用 · {{item.validity}}</text>
   </view>
   <button
     class="primary-button"

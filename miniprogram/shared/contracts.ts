@@ -34,6 +34,8 @@ export interface PackageProduct {
   lessonCount: number
   coachId?: string
   status: PackageProductStatus
+  /** 有效期天数；未设置时长期有效 */
+  validDays?: number
 }
 
 export type LessonBalanceStatus = 'available' | 'locked' | 'used'
@@ -50,6 +52,8 @@ export interface MembershipPackage {
   lockedLessons: number
   usedLessons: number
   purchasedAt: string
+  /** 到期时间；未设置时长期有效 */
+  expiresAt?: string
 }
 
 export type LessonStatus =

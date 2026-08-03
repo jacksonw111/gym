@@ -104,6 +104,7 @@ const createSeed = (now: Date): DevelopmentState => {
         priceCents: 468_000,
         lessonCount: 12,
         status: 'published',
+        validDays: 90,
       },
       {
         id: 'product-foundation-8',

@@ -1,5 +1,9 @@
 import { LatestRequestGate } from '../../models/latest-request'
-import { availablePackagesForCoach, buildPublicSlot } from '../../models/member'
+import {
+  availablePackagesForCoach,
+  buildPublicSlot,
+  membershipValidityLabel,
+} from '../../models/member'
 import { formatShanghaiDate, getShanghaiDateParts } from '../../models/time-display'
 import { createRequestId, getApi } from '../../services/api'
 import type { MembershipPackage } from '../../shared/contracts'
@@ -8,6 +12,10 @@ interface DateOption {
   date: string
   day: string
   weekday: string
+}
+
+interface MembershipRow extends MembershipPackage {
+  validity: string
 }
 
 interface SlotRow {
@@ -43,7 +51,7 @@ Page({
     dates: [] as DateOption[],
     selectedDate: '',
     slots: [] as SlotRow[],
-    memberships: [] as MembershipPackage[],
+    memberships: [] as MembershipRow[],
     selectedSlot: undefined as SlotRow | undefined,
     selectedMembershipId: '',
     loading: true,
@@ -75,7 +83,12 @@ Page({
       if (!scheduleRequests.isCurrent(request, this.data.selectedDate)) {
         return
       }
-      const memberships = availablePackagesForCoach(home.memberships, this.data.coachId)
+      const memberships = availablePackagesForCoach(home.memberships, this.data.coachId).map(
+        (membership) => ({
+          ...membership,
+          validity: membershipValidityLabel(membership),
+        }),
+      )
       this.setData({
         loading: false,
         coachName: schedule.coach.name,

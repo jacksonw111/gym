@@ -99,6 +99,47 @@ describe('课包和订单', () => {
     expect(store.ledger[0]?.operation).toBe('purchase')
   })
 
+  it('购买带有效期的课包时，把到期时间快照进会员课包；无限期课包不生成到期时间', async () => {
+    const limited: PackageProduct = { ...product, validDays: 90 }
+    const store = new MemoryStore({ users: [member], coaches: [coach], products: [limited] })
+    const order = await createOrder(store, {
+      id: 'order-limited',
+      requestId: 'purchase-limited',
+      memberId: member.id,
+      coachId: coach.id,
+      productId: limited.id,
+      createdAt: '2026-07-30T00:00:00.000Z',
+    })
+    const granted = await grantPaidOrder(store, {
+      orderId: order.id,
+      paymentId: 'payment-limited',
+      paidAt: '2026-07-30T00:01:00.000Z',
+    })
+
+    expect(order.productSnapshot.validDays).toBe(90)
+    expect(granted.expiresAt).toBe('2026-10-28T00:01:00.000Z')
+
+    const unlimitedStore = new MemoryStore({
+      users: [member],
+      coaches: [coach],
+      products: [product],
+    })
+    const unlimitedOrder = await createOrder(unlimitedStore, {
+      id: 'order-unlimited',
+      requestId: 'purchase-unlimited',
+      memberId: member.id,
+      coachId: coach.id,
+      productId: product.id,
+      createdAt: '2026-07-30T00:00:00.000Z',
+    })
+    const grantedUnlimited = await grantPaidOrder(unlimitedStore, {
+      orderId: unlimitedOrder.id,
+      paymentId: 'payment-unlimited',
+      paidAt: '2026-07-30T00:01:00.000Z',
+    })
+    expect(grantedUnlimited.expiresAt).toBeUndefined()
+  })
+
   it('人工调整写追加流水并保持 available + locked + used 守恒', async () => {
     const store = new MemoryStore({ users: [member], coaches: [coach], products: [product] })
     const order = await createOrder(store, {

@@ -1,7 +1,14 @@
 import { type FormEvent, useState } from 'react'
 import type { AdminApi, AdminData, ProductInput } from '../api'
+import { ButtonLoading } from '../components/loading'
 
-const blankProduct: ProductInput = { name: '', price: 0, lessons: 1, coachId: '' }
+const blankProduct: ProductInput = {
+  name: '',
+  price: 0,
+  lessons: 1,
+  coachId: '',
+  validDays: undefined,
+}
 const money = (value: number) =>
   new Intl.NumberFormat('zh-CN', {
     style: 'currency',
@@ -20,20 +27,41 @@ export function ProductsPage({
 }) {
   const [editing, setEditing] = useState<ProductInput | null>(null)
   const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState('')
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
     if (!editing?.name || !editing.coachId || editing.price <= 0 || editing.lessons <= 0) return
-    await api.saveProduct(editing)
-    await refresh()
-    setEditing(null)
-    setMessage('课包商品已保存；历史订单快照不会变更')
+    setBusy('save')
+    setError('')
+    try {
+      await api.saveProduct(editing)
+      await refresh()
+      setEditing(null)
+      setMessage('课包商品已保存；历史订单快照不会变更')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '课包保存失败')
+    } finally {
+      setBusy('')
+    }
   }
 
+  const validityText = (validDays: number | undefined): string =>
+    validDays ? `${validDays} 天` : '长期有效'
+
   const toggle = async (id: string, published: boolean) => {
-    await api.setProductStatus(id, published ? 'unpublished' : 'published')
-    await refresh()
-    setMessage(published ? '课包已下架，历史销售记录已保留' : '课包已上架')
+    setBusy(`status-${id}`)
+    setError('')
+    try {
+      await api.setProductStatus(id, published ? 'unpublished' : 'published')
+      await refresh()
+      setMessage(published ? '课包已下架，历史销售记录已保留' : '课包已上架')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '状态更新失败，请重试')
+    } finally {
+      setBusy('')
+    }
   }
 
   return (
@@ -51,6 +79,11 @@ export function ProductsPage({
       {message && (
         <p className="feedback success" role="status">
           {message}
+        </p>
+      )}
+      {error && (
+        <p className="feedback error" role="alert">
+          {error}
         </p>
       )}
       {editing && (
@@ -89,6 +122,22 @@ export function ProductsPage({
             />
           </label>
           <label>
+            有效期（天）
+            <input
+              type="number"
+              min="1"
+              step="1"
+              placeholder="留空为长期有效"
+              value={editing.validDays ?? ''}
+              onChange={(event) =>
+                setEditing({
+                  ...editing,
+                  validDays: event.target.value === '' ? undefined : Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
             绑定教练
             <select
               value={editing.coachId}
@@ -106,11 +155,21 @@ export function ProductsPage({
             </select>
           </label>
           <div className="button-row">
-            <button type="button" className="secondary-button" onClick={() => setEditing(null)}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setEditing(null)}
+              disabled={Boolean(busy)}
+            >
               取消
             </button>
-            <button type="submit" className="primary-button">
-              保存
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={Boolean(busy)}
+              aria-busy={busy === 'save'}
+            >
+              {busy === 'save' ? <ButtonLoading label="保存中…" /> : '保存'}
             </button>
           </div>
         </form>
@@ -123,6 +182,7 @@ export function ProductsPage({
               <th>绑定教练</th>
               <th>价格</th>
               <th>课时数</th>
+              <th>有效期</th>
               <th>历史销量</th>
               <th>状态</th>
               <th>操作</th>
@@ -138,6 +198,7 @@ export function ProductsPage({
                 <td>{product.coachName}</td>
                 <td className="numeric">{money(product.price)}</td>
                 <td>{product.lessons} 节</td>
+                <td>{validityText(product.validDays)}</td>
                 <td>{product.soldCount} 份</td>
                 <td>
                   <span className={`status ${product.status}`}>
@@ -149,6 +210,7 @@ export function ProductsPage({
                     <button
                       type="button"
                       className="text-button"
+                      disabled={Boolean(busy)}
                       onClick={() =>
                         setEditing({
                           id: product.id,
@@ -156,6 +218,7 @@ export function ProductsPage({
                           price: product.price,
                           lessons: product.lessons,
                           coachId: product.coachId,
+                          validDays: product.validDays,
                         })
                       }
                     >
@@ -165,8 +228,18 @@ export function ProductsPage({
                       type="button"
                       className="text-button"
                       onClick={() => void toggle(product.id, product.status === 'published')}
+                      disabled={Boolean(busy)}
+                      aria-busy={busy === `status-${product.id}`}
                     >
-                      {product.status === 'published' ? '下架' : '上架'}
+                      {busy === `status-${product.id}` ? (
+                        <ButtonLoading
+                          label={product.status === 'published' ? '下架中…' : '上架中…'}
+                        />
+                      ) : product.status === 'published' ? (
+                        '下架'
+                      ) : (
+                        '上架'
+                      )}
                     </button>
                   </div>
                 </td>

@@ -26,6 +26,8 @@ export interface Product {
   lessonCount: number
   coachId?: string
   status: 'published' | 'unpublished'
+  /** 有效期天数；未设置时长期有效 */
+  validDays?: number
 }
 
 export interface MembershipPackage {
@@ -41,6 +43,8 @@ export interface MembershipPackage {
   lockedLessons: number
   usedLessons: number
   purchasedAt: string
+  /** 到期时间；未设置时长期有效。购买时由课包有效期快照而来 */
+  expiresAt?: string
 }
 
 export interface Order {
@@ -55,6 +59,7 @@ export interface Order {
     name: string
     priceCents: number
     lessonCount: number
+    validDays?: number
   }
   status: 'pending' | 'paid'
   createdAt: string
@@ -270,6 +275,12 @@ export const assertPackageInvariant = (membership: MembershipPackage): void => {
     throw new DomainError('课时余额不合法')
   }
 }
+
+export const isMembershipExpired = (membership: MembershipPackage, now: Date): boolean =>
+  Boolean(membership.expiresAt && new Date(membership.expiresAt).getTime() < now.getTime())
+
+export const membershipHasBalance = (membership: MembershipPackage): boolean =>
+  membership.availableLessons + membership.lockedLessons > 0
 
 export const appendLedger = (store: Store, entry: Omit<LedgerEntry, 'id'>): LedgerEntry => {
   const created = { ...entry, id: store.nextId('ledger') }

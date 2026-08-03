@@ -219,6 +219,7 @@ describe('正式数据适配', () => {
       price: 68,
       lessons: 12,
       coachId: 'coach-1',
+      validDays: 90,
     })
 
     const request = JSON.parse(String(fetchMock.mock.lastCall?.[1]?.body))
@@ -235,8 +236,23 @@ describe('正式数据适配', () => {
             priceCents: 6800,
             lessonCount: 12,
             coachId: 'coach-1',
+            validDays: 90,
           },
         },
+      }),
+    )
+  })
+
+  it('离职教练时发送 coachLeave 并携带接收教练', async () => {
+    const api = createProductionApi('test-env')
+
+    await api.leaveCoach('coach-1', 'coach-2')
+
+    const request = JSON.parse(String(fetchMock.mock.lastCall?.[1]?.body))
+    expect(request).toEqual(
+      expect.objectContaining({
+        action: 'coachLeave',
+        payload: { coachId: 'coach-1', transferCoachId: 'coach-2' },
       }),
     )
   })

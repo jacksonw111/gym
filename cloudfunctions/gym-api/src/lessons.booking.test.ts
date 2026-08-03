@@ -39,6 +39,28 @@ const slot: ScheduleSlot = {
 }
 
 describe('预约', () => {
+  it('过期课包不能预约新课程', async () => {
+    const expired = {
+      ...membership,
+      id: 'package-expired',
+      expiresAt: '2026-07-15T00:00:00.000Z',
+    }
+    const store = new MemoryStore({ coaches: [coach], packages: [expired], schedules: [slot] })
+
+    await expect(
+      bookLesson(store, {
+        memberId: 'member-1',
+        coachId: coach.id,
+        packageId: expired.id,
+        startsAt: slot.startsAt,
+        requestId: 'book-expired-1',
+        now: '2026-08-01T00:00:00.000Z',
+      }),
+    ).rejects.toThrow('课包已过期，无法预约')
+    expect(store.packages[0]).toMatchObject({ availableLessons: 1, lockedLessons: 0 })
+    expect(store.lessons).toHaveLength(0)
+  })
+
   it('事务内锁定余额，重复 requestId 返回同一课程且不重复锁定', async () => {
     const store = new MemoryStore({ coaches: [coach], packages: [membership], schedules: [slot] })
 

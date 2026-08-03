@@ -41,13 +41,35 @@ export const buildMemberHomeModel = (
   }
 }
 
+export const isMembershipExpired = (
+  membership: Pick<MembershipPackage, 'expiresAt'>,
+  now: Date,
+): boolean => Boolean(membership.expiresAt && Date.parse(membership.expiresAt) < now.getTime())
+
 export const availablePackagesForCoach = (
   memberships: MembershipPackage[],
   coachId: string,
+  now: Date = new Date(),
 ): MembershipPackage[] =>
   memberships.filter(
-    (membership) => membership.coachId === coachId && membership.availableLessons > 0,
+    (membership) =>
+      membership.coachId === coachId &&
+      membership.availableLessons > 0 &&
+      !isMembershipExpired(membership, now),
   )
+
+export const productValidityLabel = (product: { validDays?: number }): string =>
+  product.validDays ? `购买后 ${product.validDays} 天内有效` : '长期有效'
+
+export const membershipValidityLabel = (
+  membership: Pick<MembershipPackage, 'expiresAt'>,
+  now: Date = new Date(),
+): string => {
+  if (!membership.expiresAt) return '长期有效'
+  if (isMembershipExpired(membership, now)) return '已过期'
+  const days = Math.ceil((Date.parse(membership.expiresAt) - now.getTime()) / 86_400_000)
+  return days <= 1 ? '今天到期' : `剩余 ${days} 天`
+}
 
 interface SlotInput {
   startsAt: string

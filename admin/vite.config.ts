@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     root: 'admin',
+    envDir: process.cwd(),
     base: mode === 'production' ? '/admin/' : '/',
     plugins: [react()],
     build: {

@@ -3,7 +3,9 @@ import type {
   AdminData,
   Appeal,
   CoachInput,
+  CoachLeaveResult,
   CoachStatus,
+  MembershipPackage,
   ProductInput,
   ProductStatus,
 } from './types'
@@ -67,6 +69,7 @@ const seedData = (): AdminData => ({
           used: 5,
           total: 12,
           purchasedAt: '2026-06-18',
+          expiresAt: '2026-09-16',
           changes: [],
         },
       ],
@@ -162,6 +165,7 @@ const seedData = (): AdminData => ({
       coachName: '林骁',
       status: 'published',
       soldCount: 34,
+      validDays: 90,
     },
     {
       id: 'product-basic',
@@ -452,6 +456,68 @@ export const developmentApi: AdminApi = {
     coach.status = status
     writeData(data)
   },
+  async leaveCoach(id: string, transferCoachId?: string): Promise<CoachLeaveResult> {
+    const data = readData()
+    const coach = data.coaches.find((item) => item.id === id)
+    if (!coach) throw new Error('没有找到教练')
+    if (coach.status !== 'active') throw new Error('该教练已离职')
+
+    const isExpired = (membership: MembershipPackage): boolean =>
+      Boolean(membership.expiresAt && new Date(membership.expiresAt).getTime() < Date.now())
+    const transferable: MembershipPackage[] = []
+    for (const member of data.members) {
+      for (const membership of member.packages) {
+        if (
+          membership.coachId === id &&
+          !isExpired(membership) &&
+          membership.available + membership.locked > 0
+        ) {
+          transferable.push(membership)
+        }
+      }
+    }
+
+    let transferCoachName: string | undefined
+    let transferredLessons = 0
+    if (transferable.length > 0) {
+      if (!transferCoachId) {
+        throw new Error(`该教练仍有 ${transferable.length} 份有效会员课包，请先选择接收教练`)
+      }
+      if (transferCoachId === id) throw new Error('接收教练不能是离职教练本人')
+      const transferCoach = data.coaches.find((item) => item.id === transferCoachId)
+      if (transferCoach?.status !== 'active') {
+        throw new Error('接收教练不存在或已离职')
+      }
+      for (const membership of transferable) {
+        membership.coachId = transferCoach.id
+        membership.coachName = transferCoach.name
+      }
+      for (const booking of data.bookings) {
+        if (booking.coachId === id && booking.status === 'booked') {
+          booking.coachId = transferCoach.id
+          booking.coachName = transferCoach.name
+          transferredLessons += 1
+        }
+      }
+      transferCoachName = transferCoach.name
+    }
+
+    let unpublishedProducts = 0
+    for (const product of data.products) {
+      if (product.coachId === id && product.status === 'published') {
+        product.status = 'unpublished'
+        unpublishedProducts += 1
+      }
+    }
+    coach.status = 'inactive'
+    writeData(data)
+    return {
+      transferredMemberships: transferable.length,
+      transferredLessons,
+      unpublishedProducts,
+      ...(transferCoachName ? { transferCoachName } : {}),
+    }
+  },
   async adjustPackage(packageId, delta, note) {
     const data = readData()
     const membership = findPackage(data, packageId)
@@ -477,6 +543,7 @@ export const developmentApi: AdminApi = {
     const existing = input.id ? data.products.find((item) => item.id === input.id) : undefined
     if (existing) {
       Object.assign(existing, input, { coachName: coach.name })
+      if (input.validDays === undefined) delete existing.validDays
     } else {
       data.products.push({
         id: `product-${Date.now()}`,
@@ -487,6 +554,7 @@ export const developmentApi: AdminApi = {
         coachName: coach.name,
         status: 'unpublished',
         soldCount: 0,
+        ...(input.validDays ? { validDays: input.validDays } : {}),
       })
     }
     writeData(data)

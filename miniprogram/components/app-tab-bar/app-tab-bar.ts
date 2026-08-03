@@ -1,6 +1,6 @@
 import { tabs } from '../../models/navigation'
 
-const SWITCH_DELAY_MS = 260
+const SWITCH_DELAY_MS = 400
 
 Component({
   properties: {
@@ -17,6 +17,7 @@ Component({
   data: {
     tabs: tabs.member,
     switching: false,
+    switchingLabel: '',
   },
 
   observers: {
@@ -31,12 +32,13 @@ Component({
         return
       }
       const url = event.currentTarget.dataset.url as string
-      this.setData({ switching: true })
+      const label = event.currentTarget.dataset.label as string
+      this.setData({ switching: true, switchingLabel: label })
       setTimeout(() => {
         wx.redirectTo({
           url,
           fail: () => {
-            this.setData({ switching: false })
+            this.setData({ switching: false, switchingLabel: '' })
             wx.showToast({ title: '页面切换失败，请重试', icon: 'none' })
           },
         })

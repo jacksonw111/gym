@@ -22,6 +22,8 @@ import {
   buildMemberHomeModel,
   buildPublicSlot,
   getLessonActions,
+  membershipValidityLabel,
+  productValidityLabel,
   switchableRole,
 } from '../../miniprogram/models/member'
 import { tabs } from '../../miniprogram/models/navigation'
@@ -257,6 +259,28 @@ describe('member page models', () => {
     expect(
       availablePackagesForCoach([{ ...firstPackage, availableLessons: 0 }], 'coach-a'),
     ).toEqual([])
+    expect(
+      availablePackagesForCoach(
+        [{ ...firstPackage, expiresAt: '2026-07-01T10:00:00+08:00' }],
+        'coach-a',
+        new Date('2026-08-01T08:00:00+08:00'),
+      ),
+    ).toEqual([])
+  })
+
+  it('labels product and membership validity periods', () => {
+    const now = new Date('2026-08-10T08:00:00+08:00')
+    expect(productValidityLabel({})).toBe('长期有效')
+    expect(productValidityLabel({ validDays: 90 })).toBe('购买后 90 天内有效')
+    const firstPackage = packages[0]
+    if (!firstPackage) throw new Error('expected package fixture')
+    expect(membershipValidityLabel(firstPackage, now)).toBe('长期有效')
+    expect(
+      membershipValidityLabel({ ...firstPackage, expiresAt: '2026-08-20T08:00:00+08:00' }, now),
+    ).toBe('剩余 10 天')
+    expect(
+      membershipValidityLabel({ ...firstPackage, expiresAt: '2026-08-09T08:00:00+08:00' }, now),
+    ).toBe('已过期')
   })
 
   it('makes cancellation, completion, and appeal available only in their valid windows', () => {

@@ -40,6 +40,7 @@ export interface MembershipPackage {
   used: number
   total: number
   purchasedAt: string
+  expiresAt?: string
   changes: BalanceChange[]
 }
 
@@ -64,6 +65,7 @@ export interface Product {
   coachName: string
   status: ProductStatus
   soldCount: number
+  validDays?: number
 }
 
 export interface Booking {
@@ -131,6 +133,14 @@ export interface ProductInput {
   price: number
   lessons: number
   coachId: string
+  validDays?: number
+}
+
+export interface CoachLeaveResult {
+  transferredMemberships: number
+  transferredLessons: number
+  unpublishedProducts: number
+  transferCoachName?: string
 }
 
 export interface AdminApi {
@@ -140,6 +150,7 @@ export interface AdminApi {
   loadData(): Promise<AdminData>
   saveCoach(input: CoachInput): Promise<{ id: string }>
   setCoachStatus(id: string, status: CoachStatus): Promise<void>
+  leaveCoach(id: string, transferCoachId?: string): Promise<CoachLeaveResult>
   adjustPackage(packageId: string, delta: number, note: string): Promise<void>
   saveProduct(input: ProductInput): Promise<void>
   setProductStatus(id: string, status: ProductStatus): Promise<void>

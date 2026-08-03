@@ -53,3 +53,51 @@ describe('开发数据课时守恒', () => {
     })
   })
 })
+
+describe('课包有效期与教练离职', () => {
+  it('保存课包可设置有效期，清空则回到长期有效', async () => {
+    await developmentApi.saveProduct({
+      id: 'product-basic',
+      name: '8 节私教基础包',
+      price: 3280,
+      lessons: 8,
+      coachId: 'coach-linxiao',
+      validDays: 60,
+    })
+    const withValidity = await developmentApi.loadData()
+    expect(withValidity.products.find((item) => item.id === 'product-basic')?.validDays).toBe(60)
+
+    await developmentApi.saveProduct({
+      id: 'product-basic',
+      name: '8 节私教基础包',
+      price: 3280,
+      lessons: 8,
+      coachId: 'coach-linxiao',
+    })
+    const cleared = await developmentApi.loadData()
+    expect(cleared.products.find((item) => item.id === 'product-basic')?.validDays).toBeUndefined()
+  })
+
+  it('离职教练时把有效会员课包转移给接收教练并下架课包商品', async () => {
+    const result = await developmentApi.leaveCoach('coach-linxiao', 'coach-zhoulan')
+    expect(result).toMatchObject({
+      transferredMemberships: 2,
+      unpublishedProducts: 2,
+      transferCoachName: '周岚',
+    })
+    const after = await developmentApi.loadData()
+    expect(after.coaches.find((item) => item.id === 'coach-linxiao')?.status).toBe('inactive')
+    expect(after.members[0]?.packages[0]?.coachId).toBe('coach-zhoulan')
+    expect(
+      after.products
+        .filter((item) => item.coachId === 'coach-linxiao')
+        .every((item) => item.status === 'unpublished'),
+    ).toBe(true)
+  })
+
+  it('有有效会员课包但未提供接收教练时拒绝离职', async () => {
+    await expect(developmentApi.leaveCoach('coach-linxiao')).rejects.toThrow(
+      '仍有 2 份有效会员课包',
+    )
+  })
+})

@@ -609,6 +609,111 @@ describe('CloudBase action router', () => {
     expect(created?.userId).toBeUndefined()
   })
 
+  it('管理员可上下架课包商品且状态立即可见', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const login = await router({
+      action: 'adminLogin',
+      requestId: 'admin-login-publish',
+      payload: { username: 'admin', password: 'dev-admin-password' },
+    })
+    if (!login.ok) throw new Error('管理员登录失败')
+    const token = (login.data as { token: string }).token
+    const productId = store.products[0]?.id ?? ''
+
+    const unpublished = await router({
+      action: 'adminCrud',
+      requestId: 'admin-unpublish',
+      authToken: token,
+      payload: {
+        resource: 'packages',
+        operation: 'setStatus',
+        data: { id: productId, status: 'unpublished' },
+      },
+    })
+    expect(unpublished).toMatchObject({ ok: true, data: { status: 'unpublished' } })
+
+    const published = await router({
+      action: 'adminCrud',
+      requestId: 'admin-publish',
+      authToken: token,
+      payload: {
+        resource: 'packages',
+        operation: 'setStatus',
+        data: { id: productId, status: 'published' },
+      },
+    })
+    expect(published).toMatchObject({ ok: true, data: { status: 'published' } })
+    expect(store.products.find((item) => item.id === productId)?.status).toBe('published')
+
+    const dashboard = await router({
+      action: 'adminCrud',
+      requestId: 'admin-dashboard-publish',
+      authToken: token,
+      payload: { resource: 'dashboard', operation: 'list' },
+    })
+    const listed = (dashboard as { data: { packages: Array<{ id: string; status: string }> } }).data
+      .packages
+    expect(listed.find((item) => item.id === productId)?.status).toBe('published')
+  })
+
+  it('管理员保存课包时可设置有效期，也可清空回到长期有效', async () => {
+    const store = new MemoryStore(createDevelopmentSeed())
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const login = await router({
+      action: 'adminLogin',
+      requestId: 'admin-login-validity',
+      payload: { username: 'admin', password: 'dev-admin-password' },
+    })
+    if (!login.ok) throw new Error('管理员登录失败')
+    const token = (login.data as { token: string }).token
+    const productId = store.products[0]?.id ?? ''
+
+    const withValidity = await router({
+      action: 'adminCrud',
+      requestId: 'admin-save-validity',
+      authToken: token,
+      payload: {
+        resource: 'packages',
+        operation: 'save',
+        data: {
+          id: productId,
+          name: '十节私教课',
+          priceCents: 5_000,
+          lessonCount: 10,
+          coachId: 'coach-1',
+          validDays: 90,
+        },
+      },
+    })
+    expect(withValidity).toMatchObject({ ok: true, data: { validDays: 90 } })
+
+    const cleared = await router({
+      action: 'adminCrud',
+      requestId: 'admin-save-clear-validity',
+      authToken: token,
+      payload: {
+        resource: 'packages',
+        operation: 'save',
+        data: {
+          id: productId,
+          name: '十节私教课',
+          priceCents: 5_000,
+          lessonCount: 10,
+          coachId: 'coach-1',
+        },
+      },
+    })
+    expect(cleared).toMatchObject({ ok: true })
+    expect(store.products.find((item) => item.id === productId)?.validDays).toBeUndefined()
+  })
+
   it('管理员保存课时包时必须绑定已有教练', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
     const router = createRouter(store, {
@@ -679,6 +784,75 @@ describe('CloudBase action router', () => {
       ok: true,
       data: { name: '五节体验课', coachId: 'coach-1' },
     })
+  })
+
+  it('管理员离职教练时转移有效课包并下架商品', async () => {
+    const seed = createDevelopmentSeed()
+    seed.coaches = [
+      { id: 'coach-1', userId: 'coach-user-1', name: '示例教练', status: 'active' },
+      { id: 'coach-2', name: '接任教练', status: 'active' },
+    ]
+    seed.packages = [
+      {
+        id: 'membership-1',
+        memberId: 'member-1',
+        coachId: 'coach-1',
+        coachName: '示例教练',
+        productId: 'product-1',
+        productName: '十节私教课',
+        purchasePriceCents: 5_000,
+        totalLessons: 10,
+        availableLessons: 6,
+        lockedLessons: 1,
+        usedLessons: 3,
+        purchasedAt: '2026-07-01T00:00:00.000Z',
+      },
+    ]
+    seed.lessons = [
+      {
+        id: 'lesson-1',
+        requestId: 'request-lesson-1',
+        memberId: 'member-1',
+        coachId: 'coach-1',
+        membershipPackageId: 'membership-1',
+        startsAt: '2026-08-10T02:00:00.000Z',
+        endsAt: '2026-08-10T03:00:00.000Z',
+        status: 'booked',
+      },
+    ]
+    const store = new MemoryStore(seed)
+    const router = createRouter(store, {
+      developmentPaymentsEnabled: false,
+      production: true,
+    })
+    const login = await router({
+      action: 'adminLogin',
+      requestId: 'admin-login-leave',
+      payload: { username: 'admin', password: 'dev-admin-password' },
+    })
+    if (!login.ok) throw new Error('管理员登录失败')
+    const token = (login.data as { token: string }).token
+
+    const left = await router({
+      action: 'coachLeave',
+      requestId: 'admin-coach-leave',
+      authToken: token,
+      payload: { coachId: 'coach-1', transferCoachId: 'coach-2' },
+    })
+
+    expect(left).toMatchObject({
+      ok: true,
+      data: {
+        transferredMemberships: 1,
+        transferredLessons: 1,
+        unpublishedProducts: 1,
+        transferCoachName: '接任教练',
+      },
+    })
+    expect(store.packages[0]).toMatchObject({ coachId: 'coach-2', coachName: '接任教练' })
+    expect(store.lessons[0]?.coachId).toBe('coach-2')
+    expect(store.products[0]?.status).toBe('unpublished')
+    expect(store.coaches[0]?.status).toBe('inactive')
   })
 
   it('购买绑定教练的课时包时使用课时包绑定的教练', async () => {

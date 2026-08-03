@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { AdminApi, AdminData, BalanceChange, Member, MembershipPackage } from '../api'
+import { ButtonLoading } from '../components/loading'
 
 const money = (value: number) =>
   new Intl.NumberFormat('zh-CN', {
@@ -36,6 +37,7 @@ export function MembersPage({
   )
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [busyPackageId, setBusyPackageId] = useState<string | null>(null)
   const selected = data.members.find((member) => member.id === selectedId)
   const filtered = useMemo(
     () =>
@@ -58,6 +60,7 @@ export function MembersPage({
       setErrors((current) => ({ ...current, [membership.id]: '请填写调整原因' }))
       return
     }
+    setBusyPackageId(membership.id)
     try {
       await api.adjustPackage(membership.id, value, adjustment.reason.trim())
       await refresh()
@@ -71,6 +74,8 @@ export function MembersPage({
         ...current,
         [membership.id]: caught instanceof Error ? caught.message : '调整失败',
       }))
+    } finally {
+      setBusyPackageId(null)
     }
   }
 
@@ -115,6 +120,7 @@ export function MembersPage({
                   <strong>{membership.productName}</strong>
                   <span>
                     绑定教练 {membership.coachName} · 购于 {membership.purchasedAt}
+                    {membership.expiresAt && <> · 到期 {membership.expiresAt}</>}
                   </span>
                   <div className="balance-counts">
                     <div className="available">
@@ -171,8 +177,14 @@ export function MembersPage({
                     type="button"
                     className="primary-button"
                     onClick={() => void adjust(selected, membership)}
+                    disabled={busyPackageId !== null}
+                    aria-busy={busyPackageId === membership.id}
                   >
-                    确认调整
+                    {busyPackageId === membership.id ? (
+                      <ButtonLoading label="调整中…" />
+                    ) : (
+                      '确认调整'
+                    )}
                   </button>
                 </div>
                 {membership.changes.length > 0 && (
