@@ -47,11 +47,30 @@ const createIndexCommand = (collectionName, index) => ({
   Command: JSON.stringify({ createIndexes: collectionName, indexes: [index] }),
 })
 
-const dropIndexCommand = (collectionName, indexName) => ({
-  TableName: collectionName,
-  CommandType: 'COMMAND',
-  Command: JSON.stringify({ dropIndexes: collectionName, indexes: [{ name: indexName }] }),
-})
+const dropIndex = (collectionName, index) => {
+  const attempts = [
+    // 与 createIndexes 一致的完整索引配置格式
+    {
+      dropIndexes: collectionName,
+      indexes: [indexFor(index)],
+    },
+    // MongoDB 风格：单数 index + 索引名
+    { dropIndexes: collectionName, index: index.name },
+  ]
+  let lastOutput = ''
+  for (const command of attempts) {
+    const result = tcb([
+      {
+        TableName: collectionName,
+        CommandType: 'COMMAND',
+        Command: JSON.stringify(command),
+      },
+    ])
+    if (result.ok) return result
+    lastOutput = result.stdout
+  }
+  throw new Error(`删除索引 ${collectionName}.${index.name} 失败：${lastOutput}`)
+}
 
 const ensureIndex = (collectionName, index) => {
   const first = tcb([createIndexCommand(collectionName, index)])
@@ -69,10 +88,7 @@ const ensureIndex = (collectionName, index) => {
     throw new Error(`创建索引 ${collectionName}.${index.name} 失败：${message}`)
   }
   console.log(`  索引 ${collectionName}.${index.name} 已存在且配置不同，先删除再重建…`)
-  const dropped = tcb([dropIndexCommand(collectionName, index.name)])
-  if (!dropped.ok) {
-    throw new Error(`删除索引 ${collectionName}.${index.name} 失败：${dropped.stdout}`)
-  }
+  dropIndex(collectionName, index)
   const retry = tcb([createIndexCommand(collectionName, index)])
   if (!retry.ok) {
     throw new Error(`重建索引 ${collectionName}.${index.name} 失败：${retry.stdout}`)
