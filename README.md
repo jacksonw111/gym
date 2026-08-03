@@ -147,6 +147,18 @@ npx @cloudbase/cli@3.7.0 framework deploy
 
 部署成功后，后台地址是 CloudBase 静态网站默认域名加 `/admin/`。例如默认域名为 `https://example.tcloudbaseapp.com`，后台即为 `https://example.tcloudbaseapp.com/admin/`。
 
+### GitHub 自动部署
+
+推送到 `main` 后，`.github/workflows/deploy-cloudbase.yml` 会先执行完整检查与构建，再更新三个云函数的代码并发布 `/admin` 后台。代码更新不会覆盖云端已有的函数环境变量、定时任务和运行配置。
+
+需要在 GitHub 仓库的 `Settings → Secrets and variables → Actions` 中配置：
+
+- `TCB_SECRET_ID`：腾讯云 API SecretId
+- `TCB_SECRET_KEY`：腾讯云 API SecretKey
+- `TCB_ENV_ID`：目标 CloudBase 环境编号
+
+SecretId 和 SecretKey 应使用专门用于自动部署的腾讯云子账号密钥，不要提交到代码仓库。数据库集合、索引、函数运行配置或定时任务发生变化时，仍需按上面的完整部署命令执行一次 `framework deploy`。
+
 迁移到正式环境不需要改业务代码：复制 `.env.example` 为正式环境配置，替换两个相同的环境编号、定时任务口令、支付服务地址和支付口令，并关闭测试支付即可。正式部署前运行：
 
 ```bash

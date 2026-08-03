@@ -1,0 +1,74 @@
+name: Deploy CloudBase
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-cloudbase-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: true
+      CLOUDBASE_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+      VITE_CLOUDBASE_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+      VITE_ADMIN_DEVELOPMENT: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix cloudfunctions/gym-api
+          npm ci --prefix cloudfunctions/auto-complete-lessons
+          npm ci --prefix cloudfunctions/wechat-payment-notify
+
+      - name: Check, test, and build
+        run: npm run verify
+
+      - name: Install CloudBase CLI
+        run: npm install --global @cloudbase/cli@3.7.0
+
+      - name: Check deployment credentials
+        env:
+          TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
+          TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: |
+          test -n "$TCB_SECRET_ID" || (echo "Missing GitHub secret: TCB_SECRET_ID" && exit 1)
+          test -n "$TCB_SECRET_KEY" || (echo "Missing GitHub secret: TCB_SECRET_KEY" && exit 1)
+          test -n "$TCB_ENV_ID" || (echo "Missing GitHub secret: TCB_ENV_ID" && exit 1)
+
+      - name: Log in to CloudBase
+        env:
+          TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
+          TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
+        run: tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY"
+
+      - name: Update cloud function code
+        env:
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: |
+          tcb fn code update gym-api --dir cloudfunctions/gym-api -e "$TCB_ENV_ID"
+          tcb fn code update auto-complete-lessons --dir cloudfunctions/auto-complete-lessons -e "$TCB_ENV_ID"
+          tcb fn code update wechat-payment-notify --dir cloudfunctions/wechat-payment-notify -e "$TCB_ENV_ID"
+
+      - name: Deploy admin site
+        env:
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: tcb hosting deploy admin/dist admin -e "$TCB_ENV_ID" --retry-count 3
