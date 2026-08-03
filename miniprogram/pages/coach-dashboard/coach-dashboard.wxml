@@ -4,7 +4,7 @@
   color="#242321"
   background="#f4f0e8"
  />
-<view class="page-shell dashboard">
+<view class="page-shell dashboard page-enter">
   <view class="dashboard__heading">
     <text class="eyebrow">TODAY / {{date}}</text>
     <view>{{coachName}}，看好今天的每一节。</view>
@@ -17,6 +17,7 @@
     </view>
   </view>
   <view wx:if="{{loading}}" class="state-panel">
+    <view class="spinner" aria-hidden="true" />
     <view class="state-panel__title">正在整理今日时间线</view>
   </view>
   <view wx:elif="{{error}}" class="state-panel">

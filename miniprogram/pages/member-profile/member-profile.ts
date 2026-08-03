@@ -1,5 +1,6 @@
 import { loginPageUrl } from '../../models/auth'
 import { getApi } from '../../services/api'
+import { markLoggedOut } from '../../services/session'
 import type { MembershipPackage } from '../../shared/contracts'
 
 Page({
@@ -65,5 +66,26 @@ Page({
       })
       this.setData({ switching: false })
     }
+  },
+
+  async logout() {
+    const confirmed = await this.confirmLogout()
+    if (!confirmed) {
+      return
+    }
+    markLoggedOut()
+    await this.load()
+  },
+
+  confirmLogout(): Promise<boolean> {
+    return wx
+      .showModal({
+        title: '退出登录',
+        content: '退出后将以游客身份浏览，仍可随时重新登录。',
+        confirmText: '退出',
+        confirmColor: '#b32720',
+      })
+      .then((result) => result.confirm)
+      .catch(() => false)
   },
 })

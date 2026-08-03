@@ -2,23 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { callFunction, getLoginState, signIn } = vi.hoisted(() => ({
-  callFunction: vi.fn(),
-  getLoginState: vi.fn(async () => null),
-  signIn: vi.fn(async () => ({ isAnonymousAuth: true })),
-}))
-
-vi.mock('@cloudbase/js-sdk', () => ({
-  default: {
-    init: () => ({
-      auth: () => ({
-        getLoginState,
-        anonymousAuthProvider: () => ({ signIn }),
-      }),
-      callFunction,
-    }),
-  },
-}))
+const fetchMock = vi.fn()
 
 import { createProductionApi } from './production'
 
@@ -132,13 +116,12 @@ const appeal = {
 }
 
 beforeEach(() => {
-  callFunction.mockReset()
-  getLoginState.mockClear()
-  signIn.mockClear()
+  fetchMock.mockReset()
   sessionStorage.clear()
   sessionStorage.setItem('purui-admin-session', 'admin-token')
-  callFunction.mockImplementation(async ({ data }) => {
-    const request = data as {
+  vi.stubGlobal('fetch', fetchMock)
+  fetchMock.mockImplementation(async (_url, init) => {
+    const request = JSON.parse(String(init?.body)) as {
       action: string
       payload: { resource?: string; operation?: string }
     }
@@ -150,20 +133,40 @@ beforeEach(() => {
           : request.action === 'listAppeals'
             ? [appeal]
             : {}
-    return { result: { ok: true, data: result } }
+    return { ok: true, json: async () => ({ ok: true, data: result }) }
   })
 })
 
 describe('正式数据适配', () => {
-  it('第一次调用前完成匿名云身份登录，且并发请求只登录一次', async () => {
+  it('通过普通 HTTPS 接口请求后台，不获取 CloudBase 用户身份', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: { token: 'http-admin-token' },
+      }),
+    })
+
+    await createProductionApi('test-env').login('admin', 'password')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://test-env.service.tcloudbase.com/gym-admin-api',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"action":"adminLogin"'),
+      }),
+    )
+  })
+
+  it('并发请求都通过 HTTPS 接口发送', async () => {
     const api = createProductionApi('test-env')
 
     await Promise.all([api.loadData(), api.loadData()])
 
-    expect(getLoginState).toHaveBeenCalledTimes(1)
-    expect(signIn).toHaveBeenCalledTimes(1)
-    expect(signIn.mock.invocationCallOrder[0]).toBeLessThan(
-      callFunction.mock.invocationCallOrder[0] ?? 0,
+    expect(fetchMock).toHaveBeenCalledTimes(6)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://test-env.service.tcloudbase.com/gym-admin-api',
+      expect.any(Object),
     )
   })
 
@@ -218,9 +221,9 @@ describe('正式数据适配', () => {
       coachId: 'coach-1',
     })
 
-    expect(callFunction).toHaveBeenLastCalledWith({
-      name: 'gym-api',
-      data: expect.objectContaining({
+    const request = JSON.parse(String(fetchMock.mock.lastCall?.[1]?.body))
+    expect(request).toEqual(
+      expect.objectContaining({
         action: 'adminCrud',
         authToken: 'admin-token',
         payload: {
@@ -235,6 +238,6 @@ describe('正式数据适配', () => {
           },
         },
       }),
-    })
+    )
   })
 })

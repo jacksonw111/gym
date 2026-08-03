@@ -1,3 +1,4 @@
+import { loginPageUrl } from '../../models/auth'
 import { formatShanghaiHourRange, getShanghaiDateParts } from '../../models/time-display'
 import type { LessonView } from '../../services/api'
 import { getApi } from '../../services/api'
@@ -26,6 +27,7 @@ Page({
     tab: 'upcoming' as 'upcoming' | 'history',
     upcoming: [] as LessonRow[],
     historyGroups: [] as HistoryGroup[],
+    authenticated: false,
     loading: true,
     error: '',
   },
@@ -37,6 +39,11 @@ Page({
   async load() {
     this.setData({ loading: true, error: '' })
     try {
+      const session = await getApi().getSession()
+      if (!session.authenticated) {
+        this.setData({ loading: false, authenticated: false, upcoming: [], historyGroups: [] })
+        return
+      }
       const result = await getApi().listMemberLessons()
       const groups = new Map<string, LessonRow[]>()
       for (const lesson of result.history.map(toRow)) {
@@ -46,6 +53,7 @@ Page({
       }
       this.setData({
         loading: false,
+        authenticated: true,
         upcoming: result.upcoming.map(toRow),
         historyGroups: Array.from(groups, ([month, lessons]) => ({ month, lessons })),
       })
@@ -55,6 +63,10 @@ Page({
         error: error instanceof Error ? error.message : '课程加载失败',
       })
     }
+  },
+
+  login() {
+    wx.navigateTo({ url: loginPageUrl('profile') })
   },
 
   switchTab(event: WechatMiniprogram.BaseEvent) {

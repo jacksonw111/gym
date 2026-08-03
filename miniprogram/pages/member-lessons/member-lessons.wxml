@@ -4,12 +4,12 @@
   color="#242321"
   background="#f4f0e8"
  />
-<view class="page-shell lessons-page">
+<view class="page-shell lessons-page page-enter">
   <view class="page-title">
     <text class="eyebrow">TRAINING LOG</text>
     <view>每一节，都算数。</view>
   </view>
-  <view class="tabs">
+  <view class="tabs" wx:if="{{authenticated}}">
     <view
       class="tab {{tab === 'upcoming' ? 'tab--active' : ''}}"
       data-tab="upcoming"
@@ -26,12 +26,18 @@
     </view>
   </view>
   <view wx:if="{{loading}}" class="state-panel">
+    <view class="spinner" aria-hidden="true" />
     <view class="state-panel__title">正在读取课程记录</view>
   </view>
   <view wx:elif="{{error}}" class="state-panel">
     <view class="state-panel__title">暂时无法加载</view>
     <text>{{error}}</text>
     <button class="secondary-button" bindtap="load">重试</button>
+  </view>
+  <view wx:elif="{{!authenticated}}" class="state-panel">
+    <view class="state-panel__title">登录后查看你的课程</view>
+    <text>待上课和历史课程会按教练与日期整理在这里。</text>
+    <button class="primary-button" bindtap="login">微信授权登录</button>
   </view>
   <block wx:elif="{{tab === 'upcoming'}}">
     <view

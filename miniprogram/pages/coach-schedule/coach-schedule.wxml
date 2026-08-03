@@ -4,7 +4,7 @@
   color="#242321"
   background="#f4f0e8"
  />
-<view class="page-shell schedule-page">
+<view class="page-shell schedule-page page-enter">
   <view class="schedule-heading">
     <text class="eyebrow">AVAILABILITY</text>
     <view>开放时间</view>
@@ -27,6 +27,7 @@
     <button class="secondary-button" disabled="{{submitting}}" bindtap="closeAll">全部关闭</button>
   </view>
   <view wx:if="{{loading}}" class="state-panel">
+    <view class="spinner" aria-hidden="true" />
     <view class="state-panel__title">正在读取排班</view>
   </view>
   <view wx:elif="{{error}}" class="state-panel">

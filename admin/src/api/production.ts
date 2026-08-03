@@ -1,4 +1,3 @@
-import cloudbase from '@cloudbase/js-sdk'
 import { normalizeAdminData, toCloudProductInput } from './normalize'
 import type { AdminApi, CoachInput, CoachStatus, ProductInput, ProductStatus } from './types'
 
@@ -11,28 +10,22 @@ interface CloudResponse<T> {
 const SESSION_KEY = 'purui-admin-session'
 
 export const createProductionApi = (envId: string): AdminApi => {
-  const app = cloudbase.init({ env: envId, timeout: 15_000, persistence: 'local' })
-  const auth = app.auth({ persistence: 'local' })
-  const cloudReady = (async () => {
-    const state = await auth.getLoginState()
-    if (!state) {
-      await auth.anonymousAuthProvider().signIn()
-    }
-  })()
+  const endpoint = `https://${envId}.service.tcloudbase.com/gym-admin-api`
 
   const call = async <T>(action: string, payload: Record<string, unknown> = {}): Promise<T> => {
-    await cloudReady
     const authToken = sessionStorage.getItem(SESSION_KEY)
-    const response = await app.callFunction({
-      name: 'gym-api',
-      data: {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         action,
         requestId: crypto.randomUUID(),
         payload,
         ...(authToken ? { authToken } : {}),
-      },
+      }),
     })
-    const result = response.result as CloudResponse<T>
+    if (!response.ok) throw new Error('后台服务暂时不可用')
+    const result = (await response.json()) as CloudResponse<T>
     if (!result.ok) throw new Error(result.error?.message ?? '后台请求失败')
     return result.data as T
   }

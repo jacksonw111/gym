@@ -4,8 +4,9 @@
   color="#242321"
   background="#f4f0e8"
  />
-<view class="page-shell">
+<view class="page-shell page-enter">
   <view wx:if="{{loading}}" class="state-panel">
+    <view class="spinner" aria-hidden="true" />
     <view class="state-panel__title">正在整理你的训练计划</view>
     <text>课包与预约马上就绪</text>
   </view>

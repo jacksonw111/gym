@@ -8,6 +8,7 @@ import type {
   User,
   UserRole,
 } from '../shared/contracts'
+import { isLocallyLoggedOut } from './session'
 
 export type SessionView =
   | { authenticated: false }
@@ -146,10 +147,112 @@ export interface GymApi {
   coachCompleteLesson(input: LessonMutationInput): Promise<Lesson>
 }
 
+class SessionAwareApi implements GymApi {
+  constructor(private readonly inner: GymApi) {}
+
+  async getSession(): Promise<SessionView> {
+    if (isLocallyLoggedOut()) {
+      return { authenticated: false }
+    }
+    return this.inner.getSession()
+  }
+
+  async getMemberHome(): Promise<MemberHomeView> {
+    if (isLocallyLoggedOut()) {
+      const guest = await this.inner.getMemberHome()
+      return {
+        ...guest,
+        authenticated: false,
+        user: undefined,
+        memberships: [],
+        lessons: [],
+      }
+    }
+    return this.inner.getMemberHome()
+  }
+
+  async listMemberLessons(): Promise<MemberLessonsView> {
+    if (isLocallyLoggedOut()) {
+      return { upcoming: [], history: [] }
+    }
+    return this.inner.listMemberLessons()
+  }
+
+  registerMember(input: RegisterMemberInput): Promise<SessionView> {
+    return this.inner.registerMember(input)
+  }
+
+  switchRole(role: UserRole): Promise<SessionView> {
+    return this.inner.switchRole(role)
+  }
+
+  purchasePackage(input: PurchasePackageInput): Promise<PurchaseResult> {
+    return this.inner.purchasePackage(input)
+  }
+
+  queryPurchase(input: QueryPurchaseInput): Promise<PurchaseResult> {
+    return this.inner.queryPurchase(input)
+  }
+
+  getCoachSchedule(coachId: string, date: string): Promise<CoachScheduleView> {
+    return this.inner.getCoachSchedule(coachId, date)
+  }
+
+  bookLesson(input: BookLessonInput): Promise<Lesson> {
+    return this.inner.bookLesson(input)
+  }
+
+  getLesson(lessonId: string): Promise<LessonView> {
+    return this.inner.getLesson(lessonId)
+  }
+
+  cancelLesson(input: LessonMutationInput): Promise<Lesson> {
+    return this.inner.cancelLesson(input)
+  }
+
+  completeLesson(input: CompleteLessonInput): Promise<Lesson> {
+    return this.inner.completeLesson(input)
+  }
+
+  saveFeedback(input: SaveFeedbackInput): Promise<Lesson> {
+    return this.inner.saveFeedback(input)
+  }
+
+  submitAppeal(input: SubmitAppealInput): Promise<Appeal> {
+    return this.inner.submitAppeal(input)
+  }
+
+  getCoachDashboard(date: string): Promise<CoachDashboardView> {
+    return this.inner.getCoachDashboard(date)
+  }
+
+  getOwnCoachSchedule(date: string): Promise<CoachScheduleView> {
+    return this.inner.getOwnCoachSchedule(date)
+  }
+
+  setCoachDayAvailability(input: SetDayAvailabilityInput): Promise<BulkAvailabilityResult> {
+    return this.inner.setCoachDayAvailability(input)
+  }
+
+  setCoachSlotAvailability(input: SetSlotAvailabilityInput): Promise<CoachScheduleView> {
+    return this.inner.setCoachSlotAvailability(input)
+  }
+
+  coachCancelLesson(input: CoachCancelInput): Promise<Lesson> {
+    return this.inner.coachCancelLesson(input)
+  }
+
+  coachCompleteLesson(input: LessonMutationInput): Promise<Lesson> {
+    return this.inner.coachCompleteLesson(input)
+  }
+}
+
+export const createSessionAwareApi = (api: GymApi): GymApi => new SessionAwareApi(api)
+
 let apiInstance: GymApi | undefined
 
 export const registerApi = (api: GymApi): void => {
-  apiInstance = api
+  apiInstance = new SessionAwareApi(api)
 }
 
 export const getApi = (): GymApi => {

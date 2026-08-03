@@ -38,6 +38,11 @@ export interface ApiRequest {
   internalToken?: string
 }
 
+interface HttpApiEvent {
+  httpMethod: string
+  body?: string
+}
+
 export type ApiResponse =
   | { ok: true; data: unknown }
   | { ok: false; error: { code: string; message: string } }
@@ -727,12 +732,13 @@ export const createCloudHandler = (
   getServerIdentity: IdentityProvider,
 ) => {
   const router = createRouter(store, environment)
-  return async (event: ApiRequest): Promise<ApiResponse> => {
+  return async (event: ApiRequest | HttpApiEvent): Promise<ApiResponse> => {
     try {
       await store.load?.()
       const serverIdentity = await getServerIdentity()
+      const request = 'httpMethod' in event ? (JSON.parse(event.body ?? '{}') as ApiRequest) : event
       return router({
-        ...event,
+        ...request,
         identity: serverIdentity?.openId ? { openId: serverIdentity.openId } : undefined,
       })
     } catch (error) {

@@ -4,8 +4,9 @@
   color="#242321"
   background="#f4f0e8"
  />
-<view class="page-shell coach-profile">
+<view class="page-shell coach-profile page-enter">
   <view wx:if="{{loading}}" class="state-panel">
+    <view class="spinner" aria-hidden="true" />
     <view class="state-panel__title">正在读取教练资料</view>
   </view>
   <view wx:elif="{{error}}" class="state-panel">
@@ -48,6 +49,9 @@
       >
         切换为会员
       </button>
+    </view>
+    <view class="account-actions">
+      <button class="danger-button" bindtap="logout">退出登录</button>
     </view>
   </block>
 </view>

@@ -242,6 +242,28 @@ describe('CloudBase action router', () => {
     })
   })
 
+  it('HTTP 入口从 JSON body 读取后台请求', async () => {
+    const handler = createCloudHandler(
+      new MemoryStore(createDevelopmentSeed()),
+      { developmentPaymentsEnabled: false, production: true },
+      () => undefined,
+    )
+
+    const response = await handler({
+      httpMethod: 'POST',
+      body: JSON.stringify({
+        action: 'adminLogin',
+        requestId: 'http-admin-login',
+        payload: { username: 'invalid', password: 'invalid' },
+      }),
+    } as never)
+
+    expect(response).toEqual({
+      ok: false,
+      error: { code: 'UNAUTHORIZED', message: '管理员账号或密码错误' },
+    })
+  })
+
   it('bootstrap 为教练身份返回自己的排班、课程和相关申诉', async () => {
     const seed = createDevelopmentSeed()
     const member = seed.users?.find((item) => item.id === 'member-1')

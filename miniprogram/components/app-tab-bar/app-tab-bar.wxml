@@ -1,3 +1,7 @@
+<view wx:if="{{switching}}" class="tab-bar__mask">
+  <view class="tab-bar__spinner" aria-hidden="true" />
+  <text class="tab-bar__mask-text">正在切换</text>
+</view>
 <view class="tab-bar">
   <view
     wx:for="{{tabs}}"
@@ -5,6 +9,8 @@
     class="tab-bar__item {{current === item.key ? 'tab-bar__item--active' : ''}}"
     data-url="{{item.url}}"
     bindtap="navigate"
+    hover-class="tab-bar__item--pressed"
+    hover-stay-time="80"
     aria-role="button"
     aria-label="{{item.label}}"
   >

@@ -5,6 +5,7 @@ import {
   shouldUseManualPhone,
 } from '../../models/auth'
 import { createRequestId, getApi } from '../../services/api'
+import { clearLoggedOut } from '../../services/session'
 
 interface ChooseAvatarEvent extends WechatMiniprogram.BaseEvent {
   detail: { avatarUrl: string }
@@ -107,6 +108,7 @@ Page({
         ...phoneInput,
         requestId: createRequestId('register'),
       })
+      clearLoggedOut()
       wx.showToast({ title: '登录成功', icon: 'success' })
       setTimeout(() => wx.navigateBack(), 500)
     } catch (error) {

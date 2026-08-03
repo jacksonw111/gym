@@ -155,6 +155,7 @@
           "functions": [
             {
               "name": "gym-api",
+              "path": "/gym-admin-api",
               "installDependency": true,
               "config": {
                 "handler": "dist/index.main",
