@@ -313,20 +313,24 @@ describe('CloudBase action router', () => {
 
   it('关键会员动作通过 identity 限定本人并完成购买、开发支付和预约', async () => {
     const store = new MemoryStore(createDevelopmentSeed())
-    const router = createRouter(store, {
-      developmentPaymentsEnabled: true,
-      production: false,
-      createPaymentParameters: async (order) => ({
-        orderId: order.id,
-        payment: {
-          timeStamp: '1722326400',
-          nonceStr: 'nonce',
-          package: 'prepay_id=wx-prepay',
-          signType: 'RSA',
-          paySign: 'server-signature',
-        },
-      }),
-    })
+    const router = createRouter(
+      store,
+      {
+        developmentPaymentsEnabled: true,
+        production: false,
+        createPaymentParameters: async (order) => ({
+          orderId: order.id,
+          payment: {
+            timeStamp: '1722326400',
+            nonceStr: 'nonce',
+            package: 'prepay_id=wx-prepay',
+            signType: 'RSA',
+            paySign: 'server-signature',
+          },
+        }),
+      },
+      () => '2026-07-30T00:00:00.000Z',
+    )
     const identity = { openId: 'dev-member-openid' }
     const purchased = await router({
       action: 'purchase',
